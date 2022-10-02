@@ -25,8 +25,11 @@ type _ expr =
   | Var : int -> 'a expr
 
 let rec eval_cps x env f =
-  let unary_apply op a = eval_cps a env (Base.Fn.compose f op) in
-  let binary_apply op a b = eval_cps a env (fun r_a -> (eval_cps b env (fun r_b -> op r_a  r_b |> f))) in
+  let unary_apply op a = (eval_cps [@tailcall]) a env (Base.Fn.compose f op) in
+  let binary_apply op a b =
+    (eval_cps [@tailcall]) a env (fun r_a ->
+        (eval_cps [@eval_cps]) b env (fun r_b -> op r_a r_b |> f))
+  in
   match x with
   | Mul (a, b) -> binary_apply ( *. ) a b
   | Add (a, b) -> binary_apply ( +. ) a b
@@ -41,8 +44,7 @@ let rec eval_cps x env f =
   | Const a -> f a
   | Var int -> f (lookup int env)
 
-let eval x env = eval_cps x env (Base.Fn.id)
-
+let eval x env = eval_cps x env Base.Fn.id
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
 let sub a b = Sub (a, b)
