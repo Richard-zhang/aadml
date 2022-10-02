@@ -54,22 +54,22 @@ let one = One
 let var id = Var id
 
 let rec diff = function
-  | Var x -> fun id -> if id = x then One else Zero
-  | Zero -> fun _ -> Zero
-  | One -> fun _ -> Zero
-  | Const _ -> fun _ -> Zero
-  | Mul (a, b) -> fun id -> Add (Mul (diff a id, b), Mul (diff b id, a))
-  | Add (a, b) -> fun id -> Add (diff a id, diff b id)
-  | Sub (a, b) -> fun id -> Sub (diff a id, diff b id)
+  | Var x -> fun id -> if id = x then one else zero
+  | Zero -> fun _ -> zero
+  | One -> fun _ -> zero
+  | Const _ -> fun _ -> zero
+  | Mul (a, b) -> fun id -> add (mul (diff a id) b) (mul (diff b id) a)
+  | Add (a, b) -> fun id -> add (diff a id) (diff b id)
+  | Sub (a, b) -> fun id -> sub (diff a id) (diff b id)
   | Div (a, b) ->
       fun id ->
-        let u'v = Mul (diff a id, b) in
-        let uv' = Mul (a, diff b id) in
-        Div (Sub (u'v, uv'), Mul (b, b))
-  | Sin a -> fun id -> Mul (Cos a, diff a id)
-  | Cos a -> fun id -> Sub (Zero, Mul (Sin a, diff a id))
-  | E a -> fun id -> Mul (E a, diff a id)
-  | Ln a -> fun id -> Mul (Div (One, a), diff a id)
+        let u'v = mul (diff a id) b in
+        let uv' = mul a (diff b id) in
+        div (sub u'v uv') (mul b b)
+  | Sin a -> fun id -> mul (cos a) (diff a id)
+  | Cos a -> fun id -> sub zero (mul (sin a) (diff a id))
+  | E a -> fun id -> mul (e a) (diff a id)
+  | Ln a -> fun id -> mul (div one a) (diff a id)
 
 let test_can_derv formula =
   let _ = diff formula 0 in
