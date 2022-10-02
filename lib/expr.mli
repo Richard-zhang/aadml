@@ -31,20 +31,16 @@ type _ expr =
   | One : 'a expr
   | Var : int -> 'a expr
 
-val add : 'a expr -> 'a expr -> 'a expr 
+val eval : float expr -> float env -> float
+val add : 'a expr -> 'a expr -> 'a expr
 val mul : 'a expr -> 'a expr -> 'a expr
 val sub : 'a expr -> 'a expr -> 'a expr
 val div : 'a expr -> 'a expr -> 'a expr
-
 val cos : 'a expr -> 'a expr
 val sin : 'a expr -> 'a expr
 val e : 'a expr -> 'a expr
 val ln : 'a expr -> 'a expr
-
 val zero : 'a expr
 val one : 'a expr
-
 val var : int -> 'a expr
-
-val eval : float env -> float expr -> float
 val diff : 'a expr -> int -> 'a expr
