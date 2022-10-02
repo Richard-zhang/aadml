@@ -24,22 +24,24 @@ type _ expr =
   | One : 'a expr
   | Var : int -> 'a expr
 
-let unary_apply op eval a env = op (eval a env)
-let binary_apply op eval a b env = op (eval a env) (eval b env)
+let rec eval_cps x env f =
+  let unary_apply op a = eval_cps a env (Base.Fn.compose f op) in
+  let binary_apply op a b = eval_cps a env (fun r_a -> (eval_cps b env (fun r_b -> op r_a  r_b |> f))) in
+  match x with
+  | Mul (a, b) -> binary_apply ( *. ) a b
+  | Add (a, b) -> binary_apply ( +. ) a b
+  | Sub (a, b) -> binary_apply ( -. ) a b
+  | Div (a, b) -> binary_apply ( /. ) a b
+  | Sin a -> unary_apply sin a
+  | Cos a -> unary_apply cos a
+  | Ln a -> unary_apply log a
+  | E a -> unary_apply exp a
+  | Zero -> f 0.0
+  | One -> f 1.0
+  | Const a -> f a
+  | Var int -> f (lookup int env)
 
-let rec eval = function
-  | Mul (a, b) -> binary_apply ( *. ) eval a b
-  | Add (a, b) -> binary_apply ( +. ) eval a b
-  | Sub (a, b) -> binary_apply ( -. ) eval a b
-  | Div (a, b) -> binary_apply ( /. ) eval a b
-  | Sin a -> unary_apply sin eval a
-  | Cos a -> unary_apply cos eval a
-  | Ln a -> unary_apply log eval a
-  | E a -> unary_apply exp eval a
-  | Zero -> fun _ -> 0.0
-  | One -> fun _ -> 1.0
-  | Const a -> fun _ -> a
-  | Var int -> fun env -> lookup int env
+let eval x env = eval_cps x env (Base.Fn.id)
 
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
