@@ -31,6 +31,8 @@ type _ expr =
   | One : 'a expr
   | Var : int -> 'a expr
 
+val test_formula: unit -> 'a expr
+
 val eval : float expr -> float env -> float
 val add : 'a expr -> 'a expr -> 'a expr
 val mul : 'a expr -> 'a expr -> 'a expr
@@ -44,3 +46,4 @@ val zero : 'a expr
 val one : 'a expr
 val var : int -> 'a expr
 val diff : 'a expr -> int -> 'a expr
+

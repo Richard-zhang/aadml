@@ -45,6 +45,8 @@ let rec eval_cps x env f =
   | Var int -> f (lookup int env)
 
 let eval x env = eval_cps x env Base.Fn.id
+
+(* let add : type a. a expr -> a expr -> a expr = fun a b -> Add (a, b) *)
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
 let sub a b = Sub (a, b)
@@ -55,6 +57,8 @@ let e a = E a
 let ln a = Ln a
 let zero = Zero
 let one = One
+
+(*let var : type a. int -> a expr = fun id -> Var id*)
 let var id = Var id
 
 let rec diff = function
@@ -74,6 +78,16 @@ let rec diff = function
   | Cos a -> fun id -> sub zero (mul (sin a) (diff a id))
   | E a -> fun id -> mul (e a) (diff a id)
   | Ln a -> fun id -> mul (div one a) (diff a id)
+
+let test_formula () =
+  let x_0 = var 0 in
+  let x_1 = var 1 in
+  let x_01 = mul x_0 x_1 in
+  let sin_x_0 = sin x_0 in
+  let add_x01_sin = add x_01 sin_x_0 in
+  let e = e add_x01_sin in
+  let add_1_e = add one e in
+  div one add_1_e
 
 let test_can_derv formula =
   let _ = diff formula 0 in
@@ -111,14 +125,4 @@ let%test_unit "y = x_0 * x_1" =
   test_simple formula 3.0 4.0 4.0 3.0
 
 let%test_unit "complex formula" =
-  let complex_formula =
-    let x_0 = var 0 in
-    let x_1 = var 1 in
-    let x_01 = mul x_0 x_1 in
-    let sin_x_0 = sin x_0 in
-    let add_x01_sin = add x_01 sin_x_0 in
-    let e = e add_x01_sin in
-    let add_1_e = add one e in
-    div one add_1_e
-  in
-  test_simple complex_formula 1.0 (-0.181974) 1.0 (-0.118142)
+  test_simple (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
