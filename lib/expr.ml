@@ -28,7 +28,7 @@ let rec eval_cps x env f =
   let unary_apply op a = (eval_cps [@tailcall]) a env (Base.Fn.compose f op) in
   let binary_apply op a b =
     (eval_cps [@tailcall]) a env (fun r_a ->
-        (eval_cps [@eval_cps]) b env (fun r_b -> op r_a r_b |> f))
+        (eval_cps [@tailcall]) b env (fun r_b -> op r_a r_b |> f))
   in
   match x with
   | Mul (a, b) -> binary_apply ( *. ) a b
@@ -45,8 +45,6 @@ let rec eval_cps x env f =
   | Var int -> f (lookup int env)
 
 let eval x env = eval_cps x env Base.Fn.id
-
-(* let add : type a. a expr -> a expr -> a expr = fun a b -> Add (a, b) *)
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
 let sub a b = Sub (a, b)
@@ -57,27 +55,54 @@ let e a = E a
 let ln a = Ln a
 let zero = Zero
 let one = One
-
-(*let var : type a. int -> a expr = fun id -> Var id*)
 let var id = Var id
 
-let rec diff = function
-  | Var x -> fun id -> if id = x then one else zero
-  | Zero -> fun _ -> zero
-  | One -> fun _ -> zero
-  | Const _ -> fun _ -> zero
-  | Mul (a, b) -> fun id -> add (mul (diff a id) b) (mul (diff b id) a)
-  | Add (a, b) -> fun id -> add (diff a id) (diff b id)
-  | Sub (a, b) -> fun id -> sub (diff a id) (diff b id)
+let diff_helper = function
+  | Zero -> zero
+  | One -> zero
+  | Const _ -> zero
+  | Var _ -> one
+  | Sin a -> cos a
+  | Cos a -> sub zero (sin a)
+  | E a -> e a
+  | Ln a -> div one a
+  | _ -> failwith "binary operator"
+
+let diff_binary_helper a_dot b_dot = function
+  | Add _ -> add a_dot b_dot
+  | Sub _ -> sub a_dot b_dot
+  | Mul (a, b) -> add (mul a_dot b) (mul a b_dot)
   | Div (a, b) ->
-      fun id ->
-        let u'v = mul (diff a id) b in
-        let uv' = mul a (diff b id) in
-        div (sub u'v uv') (mul b b)
-  | Sin a -> fun id -> mul (cos a) (diff a id)
-  | Cos a -> fun id -> sub zero (mul (sin a) (diff a id))
-  | E a -> fun id -> mul (e a) (diff a id)
-  | Ln a -> fun id -> mul (div one a) (diff a id)
+      let u'v = mul a_dot b in
+      let uv' = mul a b_dot in
+      div (sub u'v uv') (mul b b)
+  | _ -> failwith "not binary operator"
+
+let rec diff_cps x id cont =
+  let apply_chain_rule a exp =
+    (diff_cps [@tailcall]) a id (fun a_dot ->
+        cont (mul a_dot (diff_helper exp)))
+  in
+  let apply_binary_rule a b exp =
+    (diff_cps [@tailcall]) b id (fun b_dot ->
+        (diff_cps [@tailcall]) a id (fun a_dot ->
+            cont (diff_binary_helper a_dot b_dot exp)))
+  in
+  match x with
+  | Var x -> cont (if id = x then one else zero)
+  | Zero -> cont zero
+  | One -> cont zero
+  | Const _ -> cont zero
+  | Add (a, b) as exp -> apply_binary_rule a b exp
+  | Mul (a, b) as exp -> apply_binary_rule a b exp
+  | Sub (a, b) as exp -> apply_binary_rule a b exp
+  | Div (a, b) as exp -> apply_binary_rule a b exp
+  | Sin a as exp -> apply_chain_rule a exp
+  | Cos a as exp -> apply_chain_rule a exp
+  | E a as exp -> apply_chain_rule a exp
+  | Ln a as exp -> apply_chain_rule a exp
+
+let diff x id = diff_cps x id Base.Fn.id
 
 let test_formula () =
   let x_0 = var 0 in
@@ -108,9 +133,8 @@ let test_simple formula a derv_a b derv_b =
   fuzzy_comp diff_x0 derv_a;
   fuzzy_comp diff_x1 derv_b
 
-let%test_unit "smoke test" =
-  let formula = var 0 in
-  test_can_derv formula
+let%test_unit "smoke test" = test_can_derv (var 0)
+let%test_unit "y = sin(x_0)" = test_can_derv (sin (var 0))
 
 let%test_unit "y=x_0" =
   let formula = var 0 in
@@ -126,3 +150,7 @@ let%test_unit "y = x_0 * x_1" =
 
 let%test_unit "complex formula" =
   test_simple (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
+
+let rec fact n cont = if n = 0 then cont 1 else (fact [@tailcall]) (n-1) (fun fact_n_1 -> fact_n_1 * n |> cont)
+
+let%test "fact cps style" = fact 4 (Base.Fn.id) = 24
