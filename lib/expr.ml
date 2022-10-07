@@ -48,34 +48,6 @@ let rec fold_cps bin_op unary_op nullary_op x cont =
   | Const _ -> x |> nullary_op |> cont
   | Var _ -> x |> nullary_op |> cont
 
-let eval_unary_helper exp =
-  match exp with
-  | Sin _ -> Float.sin
-  | Cos _ -> Float.cos
-  | Ln _ -> Float.log
-  | E _ -> Float.exp
-  | _ -> failwith "unary operator only"
-
-let eval_binary_helper exp =
-  match exp with
-  | Add _ -> ( +. )
-  | Sub _ -> ( -. )
-  | Div _ -> ( /. )
-  | Mul _ -> ( *. )
-  | _ -> failwith "binary operator only"
-
-let eval_nullary_helper env exp =
-  match exp with
-  | Zero -> 0.0
-  | One -> 1.0
-  | Const a -> a
-  | Var id -> lookup id env
-  | _ -> failwith "nullary operator only"
-
-let eval x env =
-  fold_cps eval_binary_helper eval_unary_helper (eval_nullary_helper env) x
-    Base.Fn.id
-
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
 let sub a b = Sub (a, b)
@@ -88,18 +60,51 @@ let zero = Zero
 let one = One
 let var id = Var id
 
-let diff_helper = function
+let eval_unary exp =
+  match exp with
+  | Sin _ -> Float.sin
+  | Cos _ -> Float.cos
+  | Ln _ -> Float.log
+  | E _ -> Float.exp
+  | _ -> failwith "unary operator only"
+
+let eval_binary exp =
+  match exp with
+  | Add _ -> ( +. )
+  | Sub _ -> ( -. )
+  | Div _ -> ( /. )
+  | Mul _ -> ( *. )
+  | _ -> failwith "binary operator only"
+
+let eval_nullary env exp =
+  match exp with
+  | Zero -> 0.0
+  | One -> 1.0
+  | Const a -> a
+  | Var id -> lookup id env
+  | _ -> failwith "nullary operator only"
+
+let eval x env = fold_cps eval_binary eval_unary (eval_nullary env) x Base.Fn.id
+
+let diff_nullary id = function
+  | Var x -> if id = x then one else zero
   | Zero -> zero
   | One -> zero
   | Const _ -> zero
-  | Var _ -> one
-  | Sin a -> cos a
-  | Cos a -> sub zero (sin a)
-  | E a -> e a
-  | Ln a -> div one a
-  | _ -> failwith "binary operator"
+  | _ -> failwith "nullary operator only"
 
-let diff_binary_helper a_dot b_dot = function
+let diff_unary exp =
+  let diff_unary_help = function
+    | Sin a -> cos a
+    | Cos a -> sub zero (sin a)
+    | E a -> e a
+    | Ln a -> div one a
+    | _ -> failwith "unary operator only"
+  in
+  mul (diff_unary_help exp)
+
+let diff_binary x a_dot b_dot =
+  match x with
   | Add _ -> add a_dot b_dot
   | Sub _ -> sub a_dot b_dot
   | Mul (a, b) -> add (mul a_dot b) (mul a b_dot)
@@ -109,31 +114,8 @@ let diff_binary_helper a_dot b_dot = function
       div (sub u'v uv') (mul b b)
   | _ -> failwith "not binary operator"
 
-let rec diff_cps x id cont =
-  let apply_chain_rule a exp =
-    (diff_cps [@tailcall]) a id (Base.Fn.compose cont (mul (diff_helper exp)))
-  in
-  let apply_binary_rule a b exp =
-    (diff_cps [@tailcall]) b id (fun b_dot ->
-        (diff_cps [@tailcall]) a id (fun a_dot ->
-            diff_binary_helper a_dot b_dot exp |> cont))
-  in
-  match x with
-  | Var x -> cont (if id = x then one else zero)
-  | Zero -> cont zero
-  | One -> cont zero
-  | Const _ -> cont zero
-  | Add (a, b) as exp -> apply_binary_rule a b exp
-  | Mul (a, b) as exp -> apply_binary_rule a b exp
-  | Sub (a, b) as exp -> apply_binary_rule a b exp
-  | Div (a, b) as exp -> apply_binary_rule a b exp
-  | Sin a as exp -> apply_chain_rule a exp
-  | Cos a as exp -> apply_chain_rule a exp
-  | E a as exp -> apply_chain_rule a exp
-  | Ln a as exp -> apply_chain_rule a exp
-
 (* symbolic diff *)
-let diff x id = diff_cps x id Base.Fn.id
+let diff x id = fold_cps diff_binary diff_unary (diff_nullary id) x Base.Fn.id
 
 (*
 forword diff
