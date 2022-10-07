@@ -24,27 +24,58 @@ type _ expr =
   | One : 'a expr
   | Var : int -> 'a expr
 
-let rec eval_cps x env f =
-  let unary_apply op a = (eval_cps [@tailcall]) a env (Base.Fn.compose f op) in
-  let binary_apply op a b =
-    (eval_cps [@tailcall]) a env (fun r_a ->
-        (eval_cps [@tailcall]) b env (fun r_b -> op r_a r_b |> f))
+let rec fold_cps bin_op unary_op nullary_op x cont =
+  let unary_apply a exp =
+    (fold_cps [@tailcall]) bin_op unary_op nullary_op a
+      (Base.Fn.compose cont (unary_op exp))
+  in
+  let binary_apply a b exp =
+    (fold_cps bin_op unary_op nullary_op [@tailcall]) a (fun r_a ->
+        (fold_cps bin_op unary_op nullary_op [@tailcall]) b (fun r_b ->
+            (bin_op exp) r_a r_b |> cont))
   in
   match x with
-  | Mul (a, b) -> binary_apply ( *. ) a b
-  | Add (a, b) -> binary_apply ( +. ) a b
-  | Sub (a, b) -> binary_apply ( -. ) a b
-  | Div (a, b) -> binary_apply ( /. ) a b
-  | Sin a -> unary_apply sin a
-  | Cos a -> unary_apply cos a
-  | Ln a -> unary_apply log a
-  | E a -> unary_apply exp a
-  | Zero -> f 0.0
-  | One -> f 1.0
-  | Const a -> f a
-  | Var int -> f (lookup int env)
+  | Mul (a, b) -> binary_apply a b x
+  | Add (a, b) -> binary_apply a b x
+  | Sub (a, b) -> binary_apply a b x
+  | Div (a, b) -> binary_apply a b x
+  | Sin a -> unary_apply a x
+  | Cos a -> unary_apply a x
+  | Ln a -> unary_apply a x
+  | E a -> unary_apply a x
+  | Zero -> x |> nullary_op |> cont
+  | One -> x |> nullary_op |> cont
+  | Const _ -> x |> nullary_op |> cont
+  | Var _ -> x |> nullary_op |> cont
 
-let eval x env = eval_cps x env Base.Fn.id
+let eval_unary_helper exp =
+  match exp with
+  | Sin _ -> Float.sin
+  | Cos _ -> Float.cos
+  | Ln _ -> Float.log
+  | E _ -> Float.exp
+  | _ -> failwith "unary operator only"
+
+let eval_binary_helper exp =
+  match exp with
+  | Add _ -> ( +. )
+  | Sub _ -> ( -. )
+  | Div _ -> ( /. )
+  | Mul _ -> ( *. )
+  | _ -> failwith "binary operator only"
+
+let eval_nullary_helper env exp =
+  match exp with
+  | Zero -> 0.0
+  | One -> 1.0
+  | Const a -> a
+  | Var id -> lookup id env
+  | _ -> failwith "nullary operator only"
+
+let eval x env =
+  fold_cps eval_binary_helper eval_unary_helper (eval_nullary_helper env) x
+    Base.Fn.id
+
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
 let sub a b = Sub (a, b)
@@ -80,13 +111,12 @@ let diff_binary_helper a_dot b_dot = function
 
 let rec diff_cps x id cont =
   let apply_chain_rule a exp =
-    (diff_cps [@tailcall]) a id (fun a_dot ->
-        cont (mul a_dot (diff_helper exp)))
+    (diff_cps [@tailcall]) a id (Base.Fn.compose cont (mul (diff_helper exp)))
   in
   let apply_binary_rule a b exp =
     (diff_cps [@tailcall]) b id (fun b_dot ->
         (diff_cps [@tailcall]) a id (fun a_dot ->
-            cont (diff_binary_helper a_dot b_dot exp)))
+            diff_binary_helper a_dot b_dot exp |> cont))
   in
   match x with
   | Var x -> cont (if id = x then one else zero)
@@ -102,7 +132,27 @@ let rec diff_cps x id cont =
   | E a as exp -> apply_chain_rule a exp
   | Ln a as exp -> apply_chain_rule a exp
 
+(* symbolic diff *)
 let diff x id = diff_cps x id Base.Fn.id
+
+(*
+forword diff
+*)
+
+(* type res = { value : float; diff : float } *)
+
+(* could this be a specialization of eval_cps *)
+(* could diff a specialization of eval_cps *)
+(*
+let forward_diff formula env id : float =
+  let rec formula_diff_impl formula id : res =
+    match formula with
+    | Var x -> {value = lookup id env; diff =}
+
+  in
+  let res = formula_diff_impl formula env id in
+  res.diff
+*)
 
 let test_formula () =
   let x_0 = var 0 in
@@ -151,6 +201,8 @@ let%test_unit "y = x_0 * x_1" =
 let%test_unit "complex formula" =
   test_simple (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
 
-let rec fact n cont = if n = 0 then cont 1 else (fact [@tailcall]) (n-1) (fun fact_n_1 -> fact_n_1 * n |> cont)
+let rec fact n cont =
+  if n = 0 then cont 1
+  else (fact [@tailcall]) (n - 1) (fun fact_n_1 -> fact_n_1 * n |> cont)
 
-let%test "fact cps style" = fact 4 (Base.Fn.id) = 24
+let%test "fact cps style" = fact 4 Base.Fn.id = 24
