@@ -60,6 +60,14 @@ let zero = Zero
 let one = One
 let var id = Var id
 
+let eval_nullary env exp =
+  match exp with
+  | Zero -> 0.0
+  | One -> 1.0
+  | Const a -> a
+  | Var id -> lookup id env
+  | _ -> failwith "nullary operator only"
+
 let eval_unary exp =
   match exp with
   | Sin _ -> Float.sin
@@ -75,16 +83,6 @@ let eval_binary exp =
   | Div _ -> ( /. )
   | Mul _ -> ( *. )
   | _ -> failwith "binary operator only"
-
-let eval_nullary env exp =
-  match exp with
-  | Zero -> 0.0
-  | One -> 1.0
-  | Const a -> a
-  | Var id -> lookup id env
-  | _ -> failwith "nullary operator only"
-
-let eval x env = fold_cps eval_binary eval_unary (eval_nullary env) x Base.Fn.id
 
 let diff_nullary id = function
   | Var x -> if id = x then one else zero
@@ -114,27 +112,74 @@ let diff_binary x a_dot b_dot =
       div (sub u'v uv') (mul b b)
   | _ -> failwith "not binary operator"
 
-(* symbolic diff *)
-let diff x id = fold_cps diff_binary diff_unary (diff_nullary id) x Base.Fn.id
+let eval env x = fold_cps eval_binary eval_unary (eval_nullary env) x Base.Fn.id
+let diff id x = fold_cps diff_binary diff_unary (diff_nullary id) x Base.Fn.id
+
+let symbolic_diff env id formula =
+  let diff_formula = diff id formula in
+  eval env diff_formula
+
+[@@@warning "-32"]
+
+let eval_diff_nullary id = function
+  | Var x -> if id = x then 1.0 else 0.0
+  | Zero -> 0.0
+  | One -> 0.0
+  | Const _ -> 0.0
+  | _ -> failwith "nullary"
 
 (*
-forword diff
+  Base.Fn.compose : ('b -> 'c) -> ('a -> 'b) -> ('a -> 'b)
+  ( *. ) : float1 -> (float2 -> float3)
+  evaluator : float0 -> float1
+  compose : (float1 -> (float2 -> float3)) -> (float0 -> float1) -> (float 0 -> (float 2 -> float 3))
+  compose ( *. ) evaluator : float0 -> float2 -> float3
 *)
+let eval_diff_unary op =
+  Base.Fn.compose ( *. )
+    (match op with
+    | Sin _ -> Float.cos
+    | Cos _ -> Base.Fn.compose Float.neg Float.cos
+    | E _ -> Float.exp
+    | Ln _ -> ( /. ) 1.0
+    | _ -> failwith "unary")
 
-(* type res = { value : float; diff : float } *)
+let eval_diff_binary op (left_val, left_diff) (right_val, right_diff) =
+  match op with
+  | Add _ -> left_diff +. right_diff
+  | Sub _ -> left_diff -. right_diff
+  | Mul _ -> (left_diff *. right_val) +. (left_val *. right_diff)
+  | Div _ ->
+      let u'v = left_diff *. right_val in
+      let uv' = left_val *. right_diff in
+      (u'v -. uv') /. (right_val *. right_val)
+  | _ -> failwith "binary"
 
-(* could this be a specialization of eval_cps *)
-(* could diff a specialization of eval_cps *)
+type forward_t = float * float
+
+let combine_eval_diff_nullary env id x : forward_t =
+  (eval_nullary env x, eval_diff_nullary id x)
+
+let combine_eval_diff_unary x ((prev_value, prev_diff) : forward_t) : forward_t
+    =
+  (eval_unary x prev_value, eval_diff_unary x prev_value prev_diff)
+
+let combine_eval_diff_binary x (left : forward_t) (right : forward_t) :
+    forward_t =
+  (eval_binary x (fst left) (fst right), eval_diff_binary x left right)
+
 (*
-let forward_diff formula env id : float =
-  let rec formula_diff_impl formula id : res =
-    match formula with
-    | Var x -> {value = lookup id env; diff =}
-
-  in
-  let res = formula_diff_impl formula env id in
-  res.diff
+  forword diff calculate forward and diff at the same time 
 *)
+let forward_diff env id x =
+  fold_cps combine_eval_diff_binary combine_eval_diff_unary
+    (combine_eval_diff_nullary env id)
+    x snd
+
+let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
+  let formula = add (var 0) (mul (var 0) (var 1)) in
+  let env = empty |> update 0 2.0 |> update 1 3.0 in
+  [%test_eq: Base.float] (forward_diff env 0 formula) 4.0
 
 let test_formula () =
   let x_0 = var 0 in
@@ -147,41 +192,48 @@ let test_formula () =
   div one add_1_e
 
 let test_can_derv formula =
-  let _ = diff formula 0 in
+  let _ = diff 0 formula in
   [%test_eq: Base.float] 0.0 0.0
 
-let%test_unit "const" = [%test_eq: Base.float] (eval (Const 1.0) empty) 1.0
-let%test "const" = eval (Const 1.0) empty = 1.0
+let%test_unit "const" = [%test_eq: Base.float] (eval empty (Const 1.0)) 1.0
+let%test "const" = eval empty (Const 1.0) = 1.0
 
-let test_simple formula a derv_a b derv_b =
+let test_simple diff_evals formula a derv_a b derv_b =
   let fuzzy_comp a b =
-    [%test_pred: Base.float] (fun a -> a < 0.000001) (abs_float (a -. b))
+    [%test_pred: Base.float] (Base.Fn.flip ( < ) 0.000001) (abs_float (a -. b))
   in
   let env = empty |> update 0 a |> update 1 b in
-  let diff_x0 = diff formula 0 in
-  let diff_x1 = diff formula 1 in
-  let diff_x0 = eval diff_x0 env in
-  let diff_x1 = eval diff_x1 env in
-  fuzzy_comp diff_x0 derv_a;
-  fuzzy_comp diff_x1 derv_b
+  let _ =
+    List.map
+      (fun diff_eval -> fuzzy_comp (diff_eval env 0 formula) derv_a)
+      diff_evals
+  in
+  let _ =
+    List.map
+      (fun diff_eval -> fuzzy_comp (diff_eval env 1 formula) derv_b)
+      diff_evals
+  in
+  ()
 
 let%test_unit "smoke test" = test_can_derv (var 0)
 let%test_unit "y = sin(x_0)" = test_can_derv (sin (var 0))
 
+let diff_evaluators = [ symbolic_diff; forward_diff ]
+
 let%test_unit "y=x_0" =
   let formula = var 0 in
-  test_simple formula 3.0 1.0 1.0 0.0
+  test_simple diff_evaluators formula 3.0 1.0 1.0 0.0
 
 let%test_unit "y = x_0 + x_1" =
   let formula = add (var 0) (var 1) in
-  test_simple formula 3.0 1.0 1.0 1.0
+  test_simple diff_evaluators formula 3.0 1.0 1.0 1.0
 
 let%test_unit "y = x_0 * x_1" =
   let formula = mul (var 0) (var 1) in
-  test_simple formula 3.0 4.0 4.0 3.0
+  test_simple diff_evaluators formula 3.0 4.0 4.0 3.0
 
 let%test_unit "complex formula" =
-  test_simple (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
+  test_simple diff_evaluators (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
 
 let rec fact n cont =
   if n = 0 then cont 1
