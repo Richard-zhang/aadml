@@ -9,6 +9,9 @@ type 'a env = 'a IntMap.t
 let empty = IntMap.empty
 let update = IntMap.add
 let lookup key = IntMap.find key
+let nullary_warning = "nullary operator only"
+let unary_warning = "unary operator only"
+let binary_warning = "binary operator only"
 
 type _ expr =
   | Const : 'a -> 'a expr
@@ -59,6 +62,7 @@ let ln a = Ln a
 let zero = Zero
 let one = One
 let var id = Var id
+let const a = Const a
 
 let eval_nullary env exp =
   match exp with
@@ -66,7 +70,7 @@ let eval_nullary env exp =
   | One -> 1.0
   | Const a -> a
   | Var id -> lookup id env
-  | _ -> failwith "nullary operator only"
+  | _ -> failwith nullary_warning
 
 let eval_unary exp =
   match exp with
@@ -74,7 +78,7 @@ let eval_unary exp =
   | Cos _ -> Float.cos
   | Ln _ -> Float.log
   | E _ -> Float.exp
-  | _ -> failwith "unary operator only"
+  | _ -> failwith unary_warning
 
 let eval_binary exp =
   match exp with
@@ -82,14 +86,14 @@ let eval_binary exp =
   | Sub _ -> ( -. )
   | Div _ -> ( /. )
   | Mul _ -> ( *. )
-  | _ -> failwith "binary operator only"
+  | _ -> failwith binary_warning
 
 let diff_nullary id = function
   | Var x -> if id = x then one else zero
   | Zero -> zero
   | One -> zero
   | Const _ -> zero
-  | _ -> failwith "nullary operator only"
+  | _ -> failwith nullary_warning
 
 let diff_unary exp =
   let diff_unary_help = function
@@ -97,7 +101,7 @@ let diff_unary exp =
     | Cos a -> sub zero (sin a)
     | E a -> e a
     | Ln a -> div one a
-    | _ -> failwith "unary operator only"
+    | _ -> failwith unary_warning
   in
   mul (diff_unary_help exp)
 
@@ -110,7 +114,7 @@ let diff_binary x a_dot b_dot =
       let u'v = mul a_dot b in
       let uv' = mul a b_dot in
       div (sub u'v uv') (mul b b)
-  | _ -> failwith "not binary operator"
+  | _ -> failwith binary_warning
 
 let eval env x = fold_cps eval_binary eval_unary (eval_nullary env) x Base.Fn.id
 let diff id x = fold_cps diff_binary diff_unary (diff_nullary id) x Base.Fn.id
@@ -119,7 +123,7 @@ let symbolic_diff env id formula =
   let diff_formula = diff id formula in
   eval env diff_formula
 
-[@@@warning "-32"]
+[@@@warning "-32-34-37"]
 
 let eval_diff_nullary id = function
   | Var x -> if id = x then 1.0 else 0.0
@@ -176,10 +180,101 @@ let forward_diff env id x =
     (combine_eval_diff_nullary env id)
     x snd
 
+(*
+backward diff is two pass
+1. forward pass: annotate the value at each operation
+2. back propagation: traverse the graph backwards
+*)
+
+(* is there a way work around with this problem *)
+type _ tag_expr =
+  | Const : 'tag * 'a -> ('tag * 'a) tag_expr
+  | Mul :
+      'tag * ('tag * 'a) tag_expr * ('tag * 'a) tag_expr
+      -> ('tag * 'a) tag_expr
+  | Add :
+      'tag * ('tag * 'a) tag_expr * ('tag * 'a) tag_expr
+      -> ('tag * 'a) tag_expr
+  | Sub :
+      'tag * ('tag * 'a) tag_expr * ('tag * 'a) tag_expr
+      -> ('tag * 'a) tag_expr
+  | Div :
+      'tag * ('tag * 'a) tag_expr * ('tag * 'a) tag_expr
+      -> ('tag * 'a) tag_expr
+  | Sin : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
+  | Cos : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
+  | Ln : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
+  | E : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
+  | Zero : 'tag -> ('tag * 'a) tag_expr
+  | One : 'tag -> ('tag * 'a) tag_expr
+  | Var : 'tag * int -> ('tag * 'a) tag_expr
+
+let get_tag = function
+  | Const (tag, _) -> tag
+  | Mul (tag, _, _) -> tag
+  | Add (tag, _, _) -> tag
+  | Sub (tag, _, _) -> tag
+  | Div (tag, _, _) -> tag
+  | Sin (tag, _) -> tag
+  | Cos (tag, _) -> tag
+  | Ln (tag, _) -> tag
+  | E (tag, _) -> tag
+  | Zero tag -> tag
+  | One tag -> tag
+  | Var (tag, _) -> tag
+
+let add_tag tag a b = Add (tag, a, b)
+let mul_tag tag a b = Mul (tag, a, b)
+let sub_tag tag a b = Sub (tag, a, b)
+let div_tag tag a b = Div (tag, a, b)
+let cos_tag tag a = Cos (tag, a)
+let sin_tag tag a = Sin (tag, a)
+let e_tag tag a = E (tag, a)
+let ln_tag tag a = Ln (tag, a)
+let zero_tag tag = Zero tag
+let one_tag tag = One tag
+let var_tag tag id = Var (tag, id)
+let const_tag tag v = Const (tag, v)
+
+type float_expr = (float * float) expr
+
+let eval_tag_bianry (exp : 'a expr) left right =
+  let left_tag = get_tag left in
+  let right_tag = get_tag right in
+  match exp with
+  | Add _ -> add_tag (left_tag +. right_tag) left right
+  | Sub _ -> sub_tag (left_tag -. right_tag) left right
+  | Div _ -> div_tag (left_tag /. right_tag) left right
+  | Mul _ -> mul_tag (left_tag *. right_tag) left right
+  | _ -> failwith binary_warning
+
+let eval_tag_unary (exp : 'a expr) value =
+  let tag = get_tag value in
+  match exp with
+  | Sin _ -> sin_tag (Float.sin tag) value
+  | Cos _ -> cos_tag (Float.cos tag) value
+  | Ln _ -> ln_tag (Float.log tag) value
+  | E _ -> e_tag (Float.exp tag) value
+  | _ -> failwith unary_warning
+
+let eval_tag_nullary env (exp : 'a expr) =
+  match exp with
+  | Zero -> zero_tag 0.0
+  | One -> one_tag 1.0
+  | Const a -> const_tag a a
+  | Var id -> var_tag (lookup id env) id
+  | _ -> failwith nullary_warning
+
+let eval_tag env x =
+  fold_cps eval_tag_bianry eval_tag_unary (eval_tag_nullary env) x Base.Fn.id
+
 let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
   let formula = add (var 0) (mul (var 0) (var 1)) in
   let env = empty |> update 0 2.0 |> update 1 3.0 in
   [%test_eq: Base.float] (forward_diff env 0 formula) 4.0
+
+let fuzzy_comp a b =
+  [%test_pred: Base.float] (Base.Fn.flip ( < ) 0.00001) (abs_float (a -. b))
 
 let test_formula () =
   let x_0 = var 0 in
@@ -191,6 +286,17 @@ let test_formula () =
   let add_1_e = add one e in
   div one add_1_e
 
+let%test_unit "test tagged tree" =
+  let formula = test_formula () in
+  let env = empty |> update 0 1.0 |> update 1 1.0 in
+  let tagged_formula = eval_tag env formula in
+  let inner_value =
+    match tagged_formula with
+    | Div (_, _, a) -> get_tag a
+    | _ -> failwith "error"
+  in
+  [%test_eq: Base.float] inner_value 7.3
+
 let test_can_derv formula =
   let _ = diff 0 formula in
   [%test_eq: Base.float] 0.0 0.0
@@ -199,9 +305,6 @@ let%test_unit "const" = [%test_eq: Base.float] (eval empty (Const 1.0)) 1.0
 let%test "const" = eval empty (Const 1.0) = 1.0
 
 let test_simple diff_evals formula a derv_a b derv_b =
-  let fuzzy_comp a b =
-    [%test_pred: Base.float] (Base.Fn.flip ( < ) 0.000001) (abs_float (a -. b))
-  in
   let env = empty |> update 0 a |> update 1 b in
   let _ =
     List.map

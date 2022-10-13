@@ -56,6 +56,7 @@ val ln : 'a expr -> 'a expr
 val zero : 'a expr
 val one : 'a expr
 val var : int -> 'a expr
+val const : 'a -> 'a expr
 
 val diff : int -> 'a expr -> 'a expr
 (** symbolic differentation *)
