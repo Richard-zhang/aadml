@@ -236,7 +236,29 @@ let one_tag tag = One tag
 let var_tag tag id = Var (tag, id)
 let const_tag tag v = Const (tag, v)
 
-type float_expr = (float * float) expr
+let rec fold_cps_tag bin_op unary_op nullary_op x cont =
+  let unary_apply a exp =
+    (fold_cps_tag [@tailcall]) bin_op unary_op nullary_op a
+      (Base.Fn.compose cont (unary_op exp))
+  in
+  let binary_apply a b exp =
+    (fold_cps_tag bin_op unary_op nullary_op [@tailcall]) a (fun r_a ->
+        (fold_cps_tag bin_op unary_op nullary_op [@tailcall]) b (fun r_b ->
+            (bin_op exp) r_a r_b |> cont))
+  in
+  match x with
+  | Mul (_, a, b) -> binary_apply a b x
+  | Add (_, a, b) -> binary_apply a b x
+  | Sub (_, a, b) -> binary_apply a b x
+  | Div (_, a, b) -> binary_apply a b x
+  | Sin (_, a) -> unary_apply a x
+  | Cos (_, a) -> unary_apply a x
+  | Ln (_, a) -> unary_apply a x
+  | E (_, a) -> unary_apply a x
+  | Zero _ -> x |> nullary_op |> cont
+  | One _ -> x |> nullary_op |> cont
+  | Const _ -> x |> nullary_op |> cont
+  | Var _ -> x |> nullary_op |> cont
 
 let eval_tag_bianry (exp : 'a expr) left right =
   let left_tag = get_tag left in
@@ -267,6 +289,52 @@ let eval_tag_nullary env (exp : 'a expr) =
 
 let eval_tag env x =
   fold_cps eval_tag_bianry eval_tag_unary (eval_tag_nullary env) x Base.Fn.id
+
+(* fold over the tree that returns a function *)
+
+(* back propagation is the top down traversal *)
+(* top level traversal can be expressed as a function *)
+(* i represents the current label *)
+
+(** 
+  v = l + r => df/dl = df/dv * dv/dl = df/dv
+  v = l - r => df/dr = df/dv * dv/dr = - df/dv
+  v = l * r => df/dl = df/dv * r
+  v = l/r => df/dl = df/dv * 1/r | df/dr = df/dv * l * (1 /. r^2)
+*)
+let backprop_binary v fdl fdr v_derv =
+  match v with
+  | Add _ -> add_tag v_derv (fdl v_derv) (fdr v_derv)
+  | Sub _ -> add_tag v_derv (fdl v_derv) (fdr (Float.neg v_derv))
+  | Mul (_, l, r) ->
+      mul_tag v_derv (fdl (v_derv *. get_tag r)) (fdr (v_derv *. get_tag l))
+  | Div (_, l, r) ->
+      let l_v = get_tag l in
+      let r_v = get_tag r in
+      let dvdl = 1.0 /. r_v in
+      let dvdr = l_v /. (r_v *. r_v) in
+      div_tag v_derv (fdl (v_derv *. dvdl)) (fdr (v_derv *. dvdr))
+  | _ -> failwith binary_warning
+
+(**
+  v = sin x => df/dx = df/dv * dv/dx = cos x * df/dv
+  v = ln x => df/dx = df/dv * dv/dx = 1/x * df/dv
+  v = e ^ x => df/dx = df/dv * dv/dx = e ^ x * df/dv
+*)
+let backprop_unary v fd v_derv =
+  match v with
+  | Sin (_, x) -> sin_tag v_derv (fd (Float.cos (get_tag x) *. v_derv))
+  | Cos (_, x) ->
+      cos_tag v_derv (fd (Float.neg (Float.sin (get_tag x) *. v_derv)))
+  | Ln (_, x) -> ln_tag v_derv (fd (v_derv /. get_tag x))
+  | E (_, x) -> e_tag v_derv (fd (v_derv *. Float.exp (get_tag x)))
+  | _ -> failwith unary_warning
+
+let backprop_nullary v v_derv =
+  match v with
+
+
+(* let backprop env x = fold_cps_tag *)
 
 let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
   let formula = add (var 0) (mul (var 0) (var 1)) in
