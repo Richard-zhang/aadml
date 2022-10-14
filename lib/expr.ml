@@ -286,16 +286,21 @@ let test_formula () =
   let add_1_e = add one e in
   div one add_1_e
 
-let%test_unit "test tagged tree" =
+let test_formula_result evals formula =
+  let comp a b =
+    [%test_eq: Base.float] a b;
+    a
+  in
+  let values = List.map (fun f -> f formula) evals in
+  let _ = List.fold_right comp (List.tl values) (List.hd values) in
+  ()
+
+let%test_unit "test evaluators gives back the same result" =
   let formula = test_formula () in
   let env = empty |> update 0 1.0 |> update 1 1.0 in
-  let tagged_formula = eval_tag env formula in
-  let inner_value =
-    match tagged_formula with
-    | Div (_, _, a) -> get_tag a
-    | _ -> failwith "error"
-  in
-  [%test_eq: Base.float] inner_value 7.3
+  test_formula_result
+    [ Base.Fn.compose get_tag (eval_tag env); eval env ]
+    formula
 
 let test_can_derv formula =
   let _ = diff 0 formula in
