@@ -8,12 +8,16 @@ let map_t (f : 'a -> 'b) = fold (fun v l r -> Branch (f v, l, r)) Leaf
 let depth t = fold (fun _ l r -> 1 + max l r) 0 t
 
 let depth_label t =
-  fold (fun _ fdl fdr i -> Branch (i, fdl (i + 1), fdr (i + 1))) (fun _ -> Leaf) t
+  fold
+    (fun _ fdl fdr i -> Branch (i, fdl (i + 1), fdr (i + 1)))
+    (fun _ -> Leaf)
+    t
 
 let fold_cps (f : 'a -> 'b -> 'b -> 'b) (init : 'b) t =
   let rec fold_helper t cont =
     match t with
     | Leaf -> cont init
-    | Branch (v, l, r) -> fold_helper l (fun vl -> fold_helper r (fun vr -> f v vl vr |> cont))
+    | Branch (v, l, r) ->
+        fold_helper l (fun vl -> fold_helper r (fun vr -> f v vl vr |> cont))
   in
   fold_helper t Base.Fn.id
