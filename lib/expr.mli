@@ -66,3 +66,6 @@ val symbolic_diff : float env -> int -> float expr -> float
 
 val forward_diff : float env -> int -> float expr -> float
 (** evaluate feed forward differentation *)
+
+val backward_diff : float env -> int -> float expr -> float
+(** evaluate feed forward differentation *)

@@ -300,7 +300,7 @@ let eval_tag env x =
   v = l + r => df/dl = df/dv * dv/dl = df/dv
   v = l - r => df/dr = df/dv * dv/dr = - df/dv
   v = l * r => df/dl = df/dv * r
-  v = l/r => df/dl = df/dv * 1/r | df/dr = df/dv * l * (1 /. r^2)
+  v = l/r => df/dl = df/dv * 1/r | df/dr = -1 * df/dv * l * (1 /. r^2)
 *)
 let backprop_binary v fdl fdr v_derv =
   match v with
@@ -312,12 +312,13 @@ let backprop_binary v fdl fdr v_derv =
       let l_v = get_tag l in
       let r_v = get_tag r in
       let dvdl = 1.0 /. r_v in
-      let dvdr = l_v /. (r_v *. r_v) in
+      let dvdr = Float.neg (l_v /. (r_v *. r_v)) in
       div_tag v_derv (fdl (v_derv *. dvdl)) (fdr (v_derv *. dvdr))
   | _ -> failwith binary_warning
 
 (**
   v = sin x => df/dx = df/dv * dv/dx = cos x * df/dv
+  v - cos x => df/dx = df/dv * dv/dx = -sin x * df/dv
   v = ln x => df/dx = df/dv * dv/dx = 1/x * df/dv
   v = e ^ x => df/dx = df/dv * dv/dx = e ^ x * df/dv
 *)
@@ -327,14 +328,40 @@ let backprop_unary v fd v_derv =
   | Cos (_, x) ->
       cos_tag v_derv (fd (Float.neg (Float.sin (get_tag x) *. v_derv)))
   | Ln (_, x) -> ln_tag v_derv (fd (v_derv /. get_tag x))
-  | E (_, x) -> e_tag v_derv (fd (v_derv *. Float.exp (get_tag x)))
+  | E (t, _) -> e_tag v_derv (fd (v_derv *. t))
   | _ -> failwith unary_warning
 
+(**
+ df/dx = df/dv * dv/dx 
+*)
 let backprop_nullary v v_derv =
   match v with
+  | Zero _ -> zero_tag 0.0
+  | One _ -> one_tag 0.0
+  | Const (_, v) -> const_tag 0.0 v
+  | Var (_, x) -> var_tag v_derv x
+  | _ -> failwith nullary_warning
 
+let backprop x =
+  (fold_cps_tag backprop_binary backprop_unary backprop_nullary x Base.Fn.id)
+    1.0
 
-(* let backprop env x = fold_cps_tag *)
+let collect_result x =
+  let collect_result_nullary x =
+    match x with Var (tag, id) -> empty |> update id tag | _ -> empty
+  in
+  let collect_result_unary _ x = x in
+  let collect_result_binary _ l r =
+    IntMap.union (fun _ a b -> Some (a +. b)) l r
+  in
+  fold_cps_tag collect_result_binary collect_result_unary collect_result_nullary
+    x Base.Fn.id
+
+let backward_all_diff env formula =
+  eval_tag env formula |> backprop |> collect_result
+
+let backward_diff env id x =
+  x |> backward_all_diff env |> IntMap.find_opt id |> Option.value ~default:0.0
 
 let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
   let formula = add (var 0) (mul (var 0) (var 1)) in
@@ -342,7 +369,10 @@ let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
   [%test_eq: Base.float] (forward_diff env 0 formula) 4.0
 
 let fuzzy_comp a b =
-  [%test_pred: Base.float] (Base.Fn.flip ( < ) 0.00001) (abs_float (a -. b))
+  [%test_pred: Base.float]
+    ~message:(Printf.sprintf "actual:%.6f expect:%.6f" a b)
+    (Base.Fn.flip ( < ) 0.00001)
+    (abs_float (a -. b))
 
 let test_formula () =
   let x_0 = var 0 in
@@ -394,7 +424,7 @@ let test_simple diff_evals formula a derv_a b derv_b =
 let%test_unit "smoke test" = test_can_derv (var 0)
 let%test_unit "y = sin(x_0)" = test_can_derv (sin (var 0))
 
-let diff_evaluators = [ symbolic_diff; forward_diff ]
+let diff_evaluators = [ symbolic_diff; forward_diff; backward_diff ]
 
 let%test_unit "y=x_0" =
   let formula = var 0 in
@@ -408,8 +438,18 @@ let%test_unit "y = x_0 * x_1" =
   let formula = mul (var 0) (var 1) in
   test_simple diff_evaluators formula 3.0 4.0 4.0 3.0
 
+let%test_unit "y = 5 * (x_0 * x_1) + x_0" =
+  let formula = add (mul (const 5.0) (mul (var 0) (var 1))) (var 0) in
+  test_simple diff_evaluators formula 3.0 21.0 4.0 15.0
+
 let%test_unit "complex formula" =
   test_simple diff_evaluators (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
+
+let%test_unit "backward all" =
+  let env = empty |> update 0 1.0 |> update 1 1.0 in
+  let all_result = backward_all_diff env (test_formula ()) in
+  fuzzy_comp (IntMap.find 0 all_result) (-0.181974);
+  fuzzy_comp (IntMap.find 1 all_result) (-0.118142)
 
 let rec fact n cont =
   if n = 0 then cont 1
