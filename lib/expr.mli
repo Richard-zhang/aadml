@@ -39,12 +39,6 @@ val fold_cps :
   ('b -> 'c) ->
   'c
 
-val test_formula : unit -> 'a expr
-(** complicated testing fomurla *)
-
-val eval : float env -> float expr -> float
-(** naive evaluation implemented via tree traversal *)
-
 val add : 'a expr -> 'a expr -> 'a expr
 val mul : 'a expr -> 'a expr -> 'a expr
 val sub : 'a expr -> 'a expr -> 'a expr
@@ -58,14 +52,5 @@ val one : 'a expr
 val var : int -> 'a expr
 val const : 'a -> 'a expr
 
-val diff : int -> 'a expr -> 'a expr
-(** symbolic differentation *)
-
-val symbolic_diff : float env -> int -> float expr -> float
-(** evaluate symbolic differentation *)
-
-val forward_diff : float env -> int -> float expr -> float
-(** evaluate feed forward differentation *)
-
-val backward_diff : float env -> int -> float expr -> float
-(** evaluate feed forward differentation *)
+val eval : float env -> float expr -> float
+(** naive evaluation implemented via tree traversal *)
