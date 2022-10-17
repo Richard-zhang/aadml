@@ -1,3 +1,3 @@
-val pdf : int -> float Expr.expr
+val pdf : float Expr.expr -> float Expr.expr
 
-val cdf : int -> float Expr.expr
+val cdf : float Expr.expr -> float Expr.expr

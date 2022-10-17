@@ -1,1 +1,1 @@
-val fuzzy_compare : float -> float -> unit
+val fuzzy_compare : ?accuracy:float -> float -> float -> unit

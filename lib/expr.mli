@@ -53,6 +53,7 @@ val zero : 'a expr
 val one : 'a expr
 val var : int -> 'a expr
 val const : 'a -> 'a expr
+val neg : 'a expr -> 'a expr
 
 val eval : float env -> float expr -> float
 (** naive evaluation implemented via tree traversal *)

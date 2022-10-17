@@ -66,6 +66,7 @@ let const a = Const a
 let nullary_warning = "nullary operator only"
 let unary_warning = "unary operator only"
 let binary_warning = "binary operator only"
+let neg a = sub zero a
 
 let eval_nullary env exp =
   match exp with
