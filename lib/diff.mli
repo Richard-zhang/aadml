@@ -9,3 +9,7 @@ val forward_diff : float Expr.env -> int -> float Expr.expr -> float
 
 val backward_diff : float Expr.env -> int -> float Expr.expr -> float
 (** evaluate backward differentation *)
+
+val backward_all_diff : float Expr.env -> float Expr.expr -> float Expr.env
+(** evaluate differentation with regards to all input variable *)
+

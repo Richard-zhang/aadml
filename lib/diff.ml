@@ -317,12 +317,6 @@ let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
   let env = empty |> update 0 2.0 |> update 1 3.0 in
   [%test_eq: Base.float] (forward_diff env 0 formula) 4.0
 
-let fuzzy_comp a b =
-  [%test_pred: Base.float]
-    ~message:(Printf.sprintf "actual:%.6f expect:%.6f" a b)
-    (Base.Fn.flip ( < ) 0.00001)
-    (abs_float (a -. b))
-
 let test_formula () =
   let x_0 = var 0 in
   let x_1 = var 1 in
@@ -360,12 +354,12 @@ let test_simple diff_evals formula a derv_a b derv_b =
   let env = empty |> update 0 a |> update 1 b in
   let _ =
     List.map
-      (fun diff_eval -> fuzzy_comp (diff_eval env 0 formula) derv_a)
+      (fun diff_eval -> Util.fuzzy_compare (diff_eval env 0 formula) derv_a)
       diff_evals
   in
   let _ =
     List.map
-      (fun diff_eval -> fuzzy_comp (diff_eval env 1 formula) derv_b)
+      (fun diff_eval -> Util.fuzzy_compare (diff_eval env 1 formula) derv_b)
       diff_evals
   in
   ()
@@ -401,8 +395,8 @@ let%test_unit "complex formula" =
 let%test_unit "backward all" =
   let env = empty |> update 0 1.0 |> update 1 1.0 in
   let all_result = backward_all_diff env (test_formula ()) in
-  fuzzy_comp (IntMap.find 0 all_result) (-0.181974);
-  fuzzy_comp (IntMap.find 1 all_result) (-0.118142)
+  Util.fuzzy_compare (IntMap.find 0 all_result) (-0.181974);
+  Util.fuzzy_compare (IntMap.find 1 all_result) (-0.118142)
 
 let rec fact n cont =
   if n = 0 then cont 1
