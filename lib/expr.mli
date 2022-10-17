@@ -27,6 +27,7 @@ type _ expr =
   | Cos : 'a expr -> 'a expr
   | Ln : 'a expr -> 'a expr
   | E : 'a expr -> 'a expr
+  | Sqrt : 'a expr -> 'a expr
   | Zero : 'a expr
   | One : 'a expr
   | Var : int -> 'a expr
@@ -47,6 +48,7 @@ val cos : 'a expr -> 'a expr
 val sin : 'a expr -> 'a expr
 val e : 'a expr -> 'a expr
 val ln : 'a expr -> 'a expr
+val sqrt : 'a expr -> 'a expr
 val zero : 'a expr
 val one : 'a expr
 val var : int -> 'a expr

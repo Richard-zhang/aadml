@@ -20,6 +20,7 @@ type _ expr =
   | Cos : 'a expr -> 'a expr
   | Ln : 'a expr -> 'a expr
   | E : 'a expr -> 'a expr
+  | Sqrt : 'a expr -> 'a expr
   | Zero : 'a expr
   | One : 'a expr
   | Var : int -> 'a expr
@@ -43,6 +44,7 @@ let rec fold_cps bin_op unary_op nullary_op x cont =
   | Cos a -> unary_apply a x
   | Ln a -> unary_apply a x
   | E a -> unary_apply a x
+  | Sqrt a -> unary_apply a x
   | Zero -> x |> nullary_op |> cont
   | One -> x |> nullary_op |> cont
   | Const _ -> x |> nullary_op |> cont
@@ -56,6 +58,7 @@ let cos a = Cos a
 let sin a = Sin a
 let e a = E a
 let ln a = Ln a
+let sqrt a = Sqrt a
 let zero = Zero
 let one = One
 let var id = Var id
@@ -78,6 +81,7 @@ let eval_unary exp =
   | Cos _ -> Float.cos
   | Ln _ -> Float.log
   | E _ -> Float.exp
+  | Sqrt _ -> Float.sqrt
   | _ -> failwith unary_warning
 
 let eval_binary exp =

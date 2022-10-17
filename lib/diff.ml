@@ -17,6 +17,7 @@ let diff_unary exp =
     | Cos a -> sub zero (sin a)
     | E a -> e a
     | Ln a -> div one a
+    | Sqrt a -> div one (mul (add one one) (sqrt a))
     | _ -> failwith unary_warning
   in
   mul (diff_unary_help exp)
@@ -61,7 +62,8 @@ let eval_diff_unary op =
     | Cos _ -> Base.Fn.compose Float.neg Float.cos
     | E _ -> Float.exp
     | Ln _ -> ( /. ) 1.0
-    | _ -> failwith "unary")
+    | Sqrt _ -> fun x -> x |> Float.sqrt |> ( /. ) 0.5
+    | _ -> failwith unary_warning)
 
 let eval_diff_binary op (left_val, left_diff) (right_val, right_diff) =
   match op with
@@ -72,7 +74,7 @@ let eval_diff_binary op (left_val, left_diff) (right_val, right_diff) =
       let u'v = left_diff *. right_val in
       let uv' = left_val *. right_diff in
       (u'v -. uv') /. (right_val *. right_val)
-  | _ -> failwith "binary"
+  | _ -> failwith binary_warning
 
 type forward_t = float * float
 
@@ -90,6 +92,7 @@ let eval_unary exp =
   | Cos _ -> Float.cos
   | Ln _ -> Float.log
   | E _ -> Float.exp
+  | Sqrt _ -> Float.sqrt
   | _ -> failwith unary_warning
 
 let eval_binary exp =
@@ -144,6 +147,7 @@ type _ tag_expr =
   | Cos : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
   | Ln : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
   | E : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
+  | Sqrt : 'tag * ('tag * 'a) tag_expr -> ('tag * 'a) tag_expr
   | Zero : 'tag -> ('tag * 'a) tag_expr
   | One : 'tag -> ('tag * 'a) tag_expr
   | Var : 'tag * int -> ('tag * 'a) tag_expr
@@ -158,6 +162,7 @@ let get_tag = function
   | Cos (tag, _) -> tag
   | Ln (tag, _) -> tag
   | E (tag, _) -> tag
+  | Sqrt (tag, _) -> tag
   | Zero tag -> tag
   | One tag -> tag
   | Var (tag, _) -> tag
@@ -170,6 +175,7 @@ let cos_tag tag a = Cos (tag, a)
 let sin_tag tag a = Sin (tag, a)
 let e_tag tag a = E (tag, a)
 let ln_tag tag a = Ln (tag, a)
+let sqrt_tag tag v = Sqrt (tag, v)
 let zero_tag tag = Zero tag
 let one_tag tag = One tag
 let var_tag tag id = Var (tag, id)
@@ -194,6 +200,7 @@ let rec fold_cps_tag bin_op unary_op nullary_op x cont =
   | Cos (_, a) -> unary_apply a x
   | Ln (_, a) -> unary_apply a x
   | E (_, a) -> unary_apply a x
+  | Sqrt (_, a) -> unary_apply a x
   | Zero _ -> x |> nullary_op |> cont
   | One _ -> x |> nullary_op |> cont
   | Const _ -> x |> nullary_op |> cont
@@ -216,6 +223,7 @@ let eval_tag_unary (exp : 'a expr) value =
   | Cos _ -> cos_tag (Float.cos tag) value
   | Ln _ -> ln_tag (Float.log tag) value
   | E _ -> e_tag (Float.exp tag) value
+  | Sqrt _ -> sqrt_tag (Float.sqrt tag) value
   | _ -> failwith unary_warning
 
 let eval_tag_nullary env (exp : 'a expr) =
@@ -260,6 +268,7 @@ let backprop_binary v fdl fdr v_derv =
   v - cos x => df/dx = df/dv * dv/dx = -sin x * df/dv
   v = ln x => df/dx = df/dv * dv/dx = 1/x * df/dv
   v = e ^ x => df/dx = df/dv * dv/dx = e ^ x * df/dv
+  v = sqrt (x) => df/dx = df/dv * dv/dx = df/dv * -0.5 / v
 *)
 let backprop_unary v fd v_derv =
   match v with
@@ -268,6 +277,7 @@ let backprop_unary v fd v_derv =
       cos_tag v_derv (fd (Float.neg (Float.sin (get_tag x) *. v_derv)))
   | Ln (_, x) -> ln_tag v_derv (fd (v_derv /. get_tag x))
   | E (t, _) -> e_tag v_derv (fd (v_derv *. t))
+  | Sqrt (t, _) -> sqrt_tag v_derv (fd (v_derv *. 0.5 /. t))
   | _ -> failwith unary_warning
 
 (**
@@ -368,6 +378,10 @@ let diff_evaluators = [ symbolic_diff; forward_diff; backward_diff ]
 let%test_unit "y=x_0" =
   let formula = var 0 in
   test_simple diff_evaluators formula 3.0 1.0 1.0 0.0
+
+let%test_unit "y=sqrt(x_0)" =
+  let formula = sqrt (var 0) in
+  test_simple diff_evaluators formula 4.0 0.25 1.0 0.0
 
 let%test_unit "y = x_0 + x_1" =
   let formula = add (var 0) (var 1) in
