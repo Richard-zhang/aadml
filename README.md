@@ -1,5 +1,6 @@
 # Next Step
 
+* implement a visualizer to the dot format to see the computational graph
 * use free monad to represent the syntax tree
 * use recursion scheme makes more senses here
   * understand how recursion scheme can persist tail recursion properties
