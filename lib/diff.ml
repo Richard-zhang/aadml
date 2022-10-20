@@ -1,8 +1,5 @@
 open Expr
-
-let nullary_warning = "nullary operator only"
-let unary_warning = "unary operator only"
-let binary_warning = "binary operator only"
+open Util
 
 let diff_nullary id = function
   | Var x -> if id = x then one else zero
@@ -241,16 +238,6 @@ let%test_unit "y = x_0 + (x_0 * x_1), x_0 = 2, x_1 = 3" =
   let env = empty |> update 0 2.0 |> update 1 3.0 in
   [%test_eq: Base.float] (forward_diff env 0 formula) 4.0
 
-let test_formula () =
-  let x_0 = var 0 in
-  let x_1 = var 1 in
-  let x_01 = mul x_0 x_1 in
-  let sin_x_0 = sin x_0 in
-  let add_x01_sin = add x_01 sin_x_0 in
-  let e = e add_x01_sin in
-  let add_1_e = add one e in
-  div one add_1_e
-
 let test_formula_result evals formula =
   let comp a b =
     [%test_eq: Base.float] a b;
@@ -261,7 +248,7 @@ let test_formula_result evals formula =
   ()
 
 let%test_unit "test evaluators gives back the same result" =
-  let formula = test_formula () in
+  let formula = Example.test_formula () in
   let env = empty |> update 0 1.0 |> update 1 1.0 in
   test_formula_result
     [ Base.Fn.compose get_tag (eval_tag env); eval env ]
@@ -314,11 +301,11 @@ let%test_unit "y = 5 * (x_0 * x_1) + x_0" =
   test_simple diff_evaluators formula 3.0 21.0 4.0 15.0
 
 let%test_unit "complex formula" =
-  test_simple diff_evaluators (test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
+  test_simple diff_evaluators (Example.test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
 
 let%test_unit "backward all" =
   let env = empty |> update 0 1.0 |> update 1 1.0 in
-  let all_result = backward_all_diff env (test_formula ()) in
+  let all_result = backward_all_diff env (Example.test_formula ()) in
   Util.fuzzy_compare (IntMap.find 0 all_result) (-0.181974);
   Util.fuzzy_compare (IntMap.find 1 all_result) (-0.118142)
 

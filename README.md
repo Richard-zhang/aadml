@@ -7,3 +7,7 @@
 * defined the algebra of the term
 * take a look at paper connecting recursion schemes and neural networks
 
+* explicit pattern matching
+
+# Generate Dot Graph
+> dune exec -- bin/main.exe | dot -Tpdf > example/bs.pdf
