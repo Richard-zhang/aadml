@@ -1,7 +1,7 @@
 open Expr
 
 let pdf x =
-  let coef = div one (sqrt (const (2.0 *. Float.pi))) in
+  let coef = const (1.0 /. Float.sqrt (Float.pi *. 2.0)) in
   let term = e (div (mul x x) (const (-2.0))) in
   mul coef term
 
@@ -19,7 +19,7 @@ let cdf x =
   let t_2 = mul t t in
   let t_3 = mul t_2 t in
   let t_4 = mul t_2 t_2 in
-  let t_5 = mul t_2 t_3 in
+  let t_5 = mul t_3 t_2 in
   let pdf_coef = pdf x in
   let term =
     add (mul b_1 t)
@@ -27,8 +27,31 @@ let cdf x =
   in
   sub one (mul pdf_coef term)
 
+let pure_cdf x = 0.5 *. (1.0 +. Float.erf (x /. Float.sqrt 2.0))
+
+(* this is the correct handling of negative *)
+let rec eval_cdf x =
+  if x <= 0. then 1. -. eval_cdf (Float.neg x)
+  else
+    let id = 0 in
+    let env = empty |> update id x in
+    let cdf_formula = cdf (var id) in
+    Expr.eval env cdf_formula
+
+let%test_unit "cdf(0.4)" = Util.fuzzy_compare (pure_cdf 0.4) 0.65542
+
 let%test_unit "F(z <= 0.4) == 0.65542" =
-  let id = 0 in
-  let env = empty |> update id 0.4 in
-  let cdf_formula = cdf (var id) in
-  Util.fuzzy_compare (Expr.eval env cdf_formula) 0.65542
+  Util.fuzzy_compare (eval_cdf 0.4) 0.65542
+
+let%test_unit "cdf(-1.)" = Util.fuzzy_compare (pure_cdf (-1.)) 0.15865525
+let%test_unit "F(z <= -1.)" = Util.fuzzy_compare (1. -. eval_cdf 1.) 0.15865525
+
+let%test_unit "test_case" =
+  let _ =
+    List.map
+      (fun x -> Util.fuzzy_compare (eval_cdf x) (pure_cdf x))
+      [
+        -3.; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; 0.7; 0.8; 0.9; 0.95; 1.5; 4.; 8.; 9.;
+      ]
+  in
+  ()

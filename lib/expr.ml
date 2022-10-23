@@ -66,6 +66,8 @@ let one = One
 let var id = Var id
 let const a = Const a
 let neg a = sub zero a
+let power time n = if time == 0 then one else
+  Base.Fn.apply_n_times ~n:(time-1) (mul n) n
 
 let eval_nullary env exp =
   match exp with

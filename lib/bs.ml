@@ -12,15 +12,15 @@ let bs ~vol ~stock ~strike ~t ~rate =
   let strike = var strike in
   let expiry_time = var t in
   let rate = var rate in
-  let vol_square = mul vol vol in
-  let two = const 2.0 in
   let discount_factor = e (neg (mul rate expiry_time)) in
+  let vol_square = mul vol vol in
   let vol_sqrt_t = mul vol (sqrt expiry_time) in
+  let vol_square_div_two = div vol_square (const 2.0) in
   let d_1 =
     div
       (add
          (ln (div stock strike))
-         (mul expiry_time (add rate (div vol_square two))))
+         (mul expiry_time (add rate vol_square_div_two)))
       vol_sqrt_t
   in
   let d_2 = sub d_1 vol_sqrt_t in
@@ -68,5 +68,23 @@ let%test_unit "bs greek 1" =
   in
   let all_diff = Diff.backward_all_diff env formula in
   Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 1) 0.932;
-(*   Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 3) (-9.579); *)
+  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 3) 9.579;
+  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 0) 39.413;
+  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 4) 220.765;
+  ()
+
+let%test_unit "bs greek 2" =
+  let env, formula =
+    eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
+  in
+  Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 1 formula) 0.932;
+(*   Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 3 formula) (-9.579); *)
+  ()
+
+let%test_unit "bs greek 3" =
+  let env, formula =
+    eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
+  in
+  Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 1 formula) 0.932;
+(*   Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 3 formula) (-9.579); *)
   ()
