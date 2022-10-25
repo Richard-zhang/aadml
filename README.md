@@ -22,6 +22,7 @@
 4. take average of each path - express pay off function
 5. discounted to the present value
 
+- [ ] merge tag_expr and expr together
 * pricing reproducibility - pass the seed as an input
 * need to introduce max operation
 * need to introduce power operation to reduce the complexity computational graph
