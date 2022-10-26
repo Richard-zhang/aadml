@@ -28,9 +28,11 @@ type _ expr =
   | Var : int -> 'a expr
 
 let rec fold_cps bin_op unary_op nullary_op x cont =
+  let nullary_apply exp =
+    nullary_op exp |> cont in
   let unary_apply a exp =
-    (fold_cps [@tailcall]) bin_op unary_op nullary_op a
-      (Base.Fn.compose cont (unary_op exp))
+    (fold_cps [@tailcall]) bin_op unary_op nullary_op a (fun r ->
+        (unary_op exp) r |> cont)
   in
   let binary_apply a b exp =
     (fold_cps bin_op unary_op nullary_op [@tailcall]) a (fun r_a ->
@@ -47,10 +49,10 @@ let rec fold_cps bin_op unary_op nullary_op x cont =
   | Ln a -> unary_apply a x
   | E a -> unary_apply a x
   | Sqrt a -> unary_apply a x
-  | Zero -> x |> nullary_op |> cont
-  | One -> x |> nullary_op |> cont
-  | Const _ -> x |> nullary_op |> cont
-  | Var _ -> x |> nullary_op |> cont
+  | Zero -> nullary_apply x
+  | One -> nullary_apply x
+  | Const _ -> nullary_apply x
+  | Var _ -> nullary_apply x
 
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
@@ -66,8 +68,9 @@ let one = One
 let var id = Var id
 let const a = Const a
 let neg a = sub zero a
-let power time n = if time == 0 then one else
-  Base.Fn.apply_n_times ~n:(time-1) (mul n) n
+
+let power time n =
+  if time == 0 then one else Base.Fn.apply_n_times ~n:(time - 1) (mul n) n
 
 let eval_nullary env exp =
   match exp with
