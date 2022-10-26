@@ -301,7 +301,8 @@ let%test_unit "y = 5 * (x_0 * x_1) + x_0" =
   test_simple diff_evaluators formula 3.0 21.0 4.0 15.0
 
 let%test_unit "complex formula" =
-  test_simple diff_evaluators (Example.test_formula ()) 1.0 (-0.181974) 1.0 (-0.118142)
+  test_simple diff_evaluators (Example.test_formula ()) 1.0 (-0.181974) 1.0
+    (-0.118142)
 
 let%test_unit "backward all" =
   let env = empty |> update 0 1.0 |> update 1 1.0 in

@@ -115,7 +115,7 @@ let dot_nullary (name_env : string env) exp =
   | Var (tag, _) -> [ stmt_of_node ~name_env tag ]
   | _ -> failwith nullary_warning
 
-let stmts_of_label_expr ?(name_env=empty) exp =
+let stmts_of_label_expr ?(name_env = empty) exp =
   fold_cps_tag dot_binary dot_unary (dot_nullary name_env) exp Base.Fn.id
 
 let graph_of_stmts stmts =
@@ -125,5 +125,3 @@ let graph_of_stmts stmts =
 
 let graph ?name_env exp =
   exp |> label |> stmts_of_label_expr ?name_env |> graph_of_stmts
-
-

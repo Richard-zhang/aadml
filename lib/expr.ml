@@ -28,8 +28,7 @@ type _ expr =
   | Var : int -> 'a expr
 
 let rec fold_cps bin_op unary_op nullary_op x cont =
-  let nullary_apply exp =
-    nullary_op exp |> cont in
+  let nullary_apply exp = nullary_op exp |> cont in
   let unary_apply a exp =
     (fold_cps [@tailcall]) bin_op unary_op nullary_op a (fun r ->
         (unary_op exp) r |> cont)
