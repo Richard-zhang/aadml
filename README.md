@@ -27,6 +27,12 @@
 * need to introduce max operation
 * need to introduce power operation to reduce the complexity computational graph
 
+# Currnet Issue
+- [ ] Duplication of tag expr
+- [ ] not support for logical operation
+- [ ] not support for if-then-else control flow
+- [ ] Visulization including i.e sub expression
+
 # Debug
 
 * the bug is a mistake in the implementation of normal distribution
@@ -42,4 +48,28 @@
 * use structured note at as an example for hull white 1 factor
 
 # Limitation
-* lack of automatics
+* lack of automation
+
+# Learn
+
+## OCaml Type System
+* [Polymorphism and its limitations](https://v2.ocaml.org/manual/polymorphism.html)
+  * how to rececover gnericity
+    * weakly polymorphic type variable - a placeholder for a concrete type that's unknown atm
+      * weakly type must be known during the compilation of a compilation unit
+      * hence it can be be placed into mli file
+      * value restriction
+        * if soemthing rely on persistent mutable stats behind the screne, then it should be give a weak type
+        * difference between function definition and value definition
+      * relaxed value restriction
+        * covariant - Functor f - s is a subtype t iff f s is a subtype of f t
+        * contravariant 
+        * scenarios
+          * abstrac data types
+          * variance types
+    * generic polymorphic type variables
+    * polymorphic recursion
+      * need to introduce a different type variable 
+        * for every application of the recursive function
+    * understand type checker behaviour
+* [GADT](https://v2.ocaml.org/manual/gadts-tutorial.html)

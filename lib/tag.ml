@@ -51,9 +51,10 @@ let var_tag tag id = Var (tag, id)
 let const_tag tag v = Const (tag, v)
 
 let rec fold_cps_tag bin_op unary_op nullary_op x cont =
+  let nullary_apply exp = nullary_op exp |> cont in
   let unary_apply a exp =
-    (fold_cps_tag [@tailcall]) bin_op unary_op nullary_op a
-      (Base.Fn.compose cont (unary_op exp))
+    (fold_cps_tag [@tailcall]) bin_op unary_op nullary_op a (fun r ->
+        (unary_op exp) r |> cont)
   in
   let binary_apply a b exp =
     (fold_cps_tag bin_op unary_op nullary_op [@tailcall]) a (fun r_a ->
@@ -70,7 +71,7 @@ let rec fold_cps_tag bin_op unary_op nullary_op x cont =
   | Ln (_, a) -> unary_apply a x
   | E (_, a) -> unary_apply a x
   | Sqrt (_, a) -> unary_apply a x
-  | Zero _ -> x |> nullary_op |> cont
-  | One _ -> x |> nullary_op |> cont
-  | Const _ -> x |> nullary_op |> cont
-  | Var _ -> x |> nullary_op |> cont
+  | Zero _ -> nullary_apply x
+  | One _ -> nullary_apply x
+  | Const _ -> nullary_apply x
+  | Var _ -> nullary_apply x

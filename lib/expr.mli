@@ -31,6 +31,14 @@ type _ expr =
   | Zero : 'a expr
   | One : 'a expr
   | Var : int -> 'a expr
+  | Max : 'a expr * 'a expr -> 'a expr
+  | Min : 'a expr * 'a expr -> 'a expr
+  | Not : bool expr -> bool expr
+  | And : bool expr * bool expr -> bool expr
+  | Or : bool expr * bool expr -> bool expr
+  | Equal : 'a expr * 'a expr -> bool expr
+  | Less : 'a expr * 'a expr -> bool expr
+  | IfThenElse : bool expr * 'a expr * 'a expr -> 'a expr
 
 val fold_cps :
   ('a expr -> 'b -> 'b -> 'b) ->
@@ -58,3 +66,5 @@ val power : int -> 'a expr -> 'a expr
 
 val eval : float env -> float expr -> float
 (** naive evaluation implemented via tree traversal *)
+
+val string_of_op : show:('a -> string) -> 'a expr -> string

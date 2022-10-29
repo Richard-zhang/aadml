@@ -6,24 +6,10 @@ type node = Op of int * string | Input of int
 
 let id_of_node = function Op (id, _) -> id | Input id -> id
 
-let string_of_op (exp : float expr) =
-  match exp with
-  | Add _ -> "+"
-  | Mul _ -> "*"
-  | Sub _ -> "-"
-  | Div _ -> "/"
-  | Sin _ -> "sin"
-  | Cos _ -> "cos"
-  | Ln _ -> "ln"
-  | E _ -> "e"
-  | Sqrt _ -> "sqrt"
-  | Zero -> "0"
-  | One -> "1"
-  | Const a -> Printf.sprintf "%0.2f" a
-  | Var id -> string_of_int id
-
 let get_node (exp : 'a expr) label =
-  match exp with Var id -> Input (-1 * id) | _ -> Op (label, string_of_op exp)
+  match exp with
+  | Var id -> Input (-1 * id)
+  | _ -> Op (label, string_of_op ~show:(Printf.sprintf "%0.2f") exp)
 
 (* pre order traversal using label *)
 let label_binary (exp : 'a expr) fl fr label =
