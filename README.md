@@ -71,5 +71,15 @@
     * polymorphic recursion
       * need to introduce a different type variable 
         * for every application of the recursive function
+    * **type variables may or may not be polymorphic**
     * understand type checker behaviour
+    * A fundmental issue of genericity
+      * the type variable are introduced at the start of definitio hence may be uniformed unneccesarily
+      * univerally quantified types to rescue
+        * no native support in ocaml
+        * achieved using universally quantified record fields
+          * [record fields](https://v2.ocaml.org/manual/typedecl.html#field-decl)
+          * [polynomial type expression](https://v2.ocaml.org/manual/types.html#poly-typexpr)
+
 * [GADT](https://v2.ocaml.org/manual/gadts-tutorial.html)
+* Existential vs. Universally quantified types
