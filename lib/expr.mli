@@ -47,20 +47,25 @@ type ('tag, _) tag_expr =
   | Less :
       'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
       -> ('tag, bool) tag_expr
-  | IfThenElse :
+  | Cond :
       'tag * ('tag, bool) tag_expr * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
       -> ('tag, 'a) tag_expr
 
-type ('tag, 'a) nullary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a }
-type ('tag, 'a) unary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a }
-type ('tag, 'a) binary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a }
+type ('tag, 'a) nullary = { nop : 'elt. ('tag, 'elt) tag_expr -> 'a }
+type ('tag, 'a) unary = { uop : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a }
+type ('tag, 'a) binary = { bop : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a }
+
+type ('tag, 'a) ternary = {
+  top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
+}
 
 val get_tag : ('tag, 'b) tag_expr -> 'tag
 
 val fold_cps :
-  (('tag, 'a) tag_expr -> 'b -> 'b -> 'b) ->
-  (('tag, 'a) tag_expr -> 'b -> 'b) ->
-  (('tag, 'a) tag_expr -> 'b) ->
+  ('tag, 'b) ternary ->
+  ('tag, 'b) binary ->
+  ('tag, 'b) unary ->
+  ('tag, 'b) nullary ->
   ('tag, 'a) tag_expr ->
   ('b -> 'c) ->
   'c

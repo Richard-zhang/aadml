@@ -55,32 +55,45 @@ type ('tag, _) tag_expr =
   | Less :
       'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
       -> ('tag, bool) tag_expr
-  | IfThenElse :
+  | Cond :
       'tag * ('tag, bool) tag_expr * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
       -> ('tag, 'a) tag_expr
 
-type ('tag, 'a) nullary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a }
-type ('tag, 'a) unary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a }
-type ('tag, 'a) binary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a }
+type ('tag, 'a) nullary = { nop : 'elt. ('tag, 'elt) tag_expr -> 'a }
+type ('tag, 'a) unary = { uop : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a }
+type ('tag, 'a) binary = { bop : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a }
+
+type ('tag, 'a) ternary = {
+  top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
+}
+
 type 'a expr = (unit, 'a) tag_expr
 
 let rec fold_cps :
     type a.
+    (_, _) ternary ->
     (_, _) binary ->
     (_, _) unary ->
     (_, _) nullary ->
     (_, a) tag_expr ->
     (_ -> _) ->
     _ =
- fun bin_op unary_op nullary_op x cont ->
-  let nullary_apply exp = nullary_op.op exp |> cont in
+ fun ternary_op bin_op unary_op nullary_op x cont ->
+  let nullary_apply exp = nullary_op.nop exp |> cont in
   let unary_apply a exp =
-    fold_cps bin_op unary_op nullary_op a (fun r -> (unary_op.op exp) r |> cont)
+    fold_cps ternary_op bin_op unary_op nullary_op a (fun r ->
+        (unary_op.uop exp) r |> cont)
   in
   let binary_apply a b exp =
-    fold_cps bin_op unary_op nullary_op a (fun r_a ->
-        fold_cps bin_op unary_op nullary_op b (fun r_b ->
-            (bin_op.op exp) r_a r_b |> cont))
+    fold_cps ternary_op bin_op unary_op nullary_op a (fun r_a ->
+        fold_cps ternary_op bin_op unary_op nullary_op b (fun r_b ->
+            (bin_op.bop exp) r_a r_b |> cont))
+  in
+  let ternary_apply a b c exp =
+    fold_cps ternary_op bin_op unary_op nullary_op a (fun r_a ->
+        fold_cps ternary_op bin_op unary_op nullary_op b (fun r_b ->
+            fold_cps ternary_op bin_op unary_op nullary_op c (fun r_c ->
+                (ternary_op.top exp) r_a r_b r_c |> cont)))
   in
   match x with
   | Mul (_, a, b) -> binary_apply a b x
@@ -101,8 +114,9 @@ let rec fold_cps :
   | Not (_, a) -> unary_apply a x
   | And (_, a, b) -> binary_apply a b x
   | Or (_, a, b) -> binary_apply a b x
-  (*     | Equal (a, b) -> binary_apply a b x *)
-  | _ -> failwith "TODO"
+  | Equal (_, a, b) -> binary_apply a b x
+  | Less (_, a, b) -> binary_apply a b x
+  | Cond (_, a, b, c) -> ternary_apply a b c x
 
 let add a b = Add ((), a, b)
 let mul a b = Mul ((), a, b)
@@ -126,39 +140,48 @@ module Eq = struct
   type (_, _) t = Refl : ('a, 'a) t
 end
 
-let eval_nullary : type b. float env -> (b, float) nullary =
- fun env ->
-  let op : type a. (b, a) tag_expr -> float = function
+let eval_nullary env =
+  let nop : type a. (_, a) tag_expr -> _ = function
     | Zero _ -> 0.0
     | One _ -> 1.0
     | Const (_, a) -> a
     | Var (_, id) -> lookup id env
     | _ -> failwith nullary_warning
   in
-  { op }
+  { nop }
 
-let eval_unary exp =
-  match exp with
-  | Sin _ -> Float.sin
-  | Cos _ -> Float.cos
-  | Ln _ -> Float.log
-  | E _ -> Float.exp
-  | Sqrt _ -> Float.sqrt
-  | _ -> failwith unary_warning
+let eval_unary =
+  let uop : type a. (_, a) tag_expr -> _ -> _ = function
+    | Sin _ -> Float.sin
+    | Cos _ -> Float.cos
+    | Ln _ -> Float.log
+    | E _ -> Float.exp
+    | Sqrt _ -> Float.sqrt
+    | _ -> failwith unary_warning
+  in
+  { uop }
 
-let eval_binary exp =
-  match exp with
-  | Add _ -> ( +. )
-  | Sub _ -> ( -. )
-  | Div _ -> ( /. )
-  | Mul _ -> ( *. )
-  | Max _ -> Float.max
-  | Min _ -> Float.min
-  | _ -> failwith binary_warning
+let eval_binary =
+  let bop : type a. (_, a) tag_expr -> _ -> _ -> _ = function
+    | Add _ -> ( +. )
+    | Sub _ -> ( -. )
+    | Div _ -> ( /. )
+    | Mul _ -> ( *. )
+    | Max _ -> Float.max
+    | Min _ -> Float.min
+    | _ -> failwith binary_warning
+  in
+  { bop }
+
+let eval_ternary =
+  let top : type a. (_, a) tag_expr -> _ -> _ -> _ -> _ = function
+    | Cond _ -> fun a b c -> if a == 1. then b else c
+    | _ -> failwith ternary_warning
+  in
+  { top }
 
 let eval env x =
-  fold_cps { op = eval_binary } { op = eval_unary } (eval_nullary env) x
-    Base.Fn.id
+  fold_cps eval_ternary eval_binary eval_unary (eval_nullary env) x Base.Fn.id
 
 let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   match exp with
@@ -182,7 +205,7 @@ let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   | Or _ -> "or"
   | Equal _ -> "equal"
   | Less _ -> "less"
-  | IfThenElse _ -> "If"
+  | Cond _ -> "If"
 
 let get_tag : type a. (_, a) tag_expr -> _ = function
   | Const (tag, _) -> tag
@@ -205,7 +228,7 @@ let get_tag : type a. (_, a) tag_expr -> _ = function
   | Or (tag, _, _) -> tag
   | Equal (tag, _, _) -> tag
   | Less (tag, _, _) -> tag
-  | IfThenElse (tag, _, _, _) -> tag
+  | Cond (tag, _, _, _) -> tag
 
 let add_tag tag a b = Add (tag, a, b)
 let mul_tag tag a b = Mul (tag, a, b)
