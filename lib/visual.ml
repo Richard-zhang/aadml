@@ -1,5 +1,4 @@
 open Expr
-open Tag
 open Util
 
 type node = Op of int * string | Input of int
@@ -8,7 +7,7 @@ let id_of_node = function Op (id, _) -> id | Input id -> id
 
 let get_node (exp : 'a expr) label =
   match exp with
-  | Var id -> Input (-1 * id)
+  | Var (_, id) -> Input (-1 * id)
   | _ -> Op (label, string_of_op ~show:(Printf.sprintf "%0.2f") exp)
 
 (* pre order traversal using label *)
@@ -41,10 +40,10 @@ let label_unary (exp : 'a expr) f label =
 let label_nullary (exp : 'a expr) label =
   let node = get_node exp label in
   match exp with
-  | Zero -> (label, zero_tag node)
-  | One -> (label, one_tag node)
-  | Const a -> (label, const_tag node a)
-  | Var id -> (label, var_tag node id)
+  | Zero _ -> (label, zero_tag node)
+  | One _ -> (label, one_tag node)
+  | Const (_, a) -> (label, const_tag node a)
+  | Var (_, id) -> (label, var_tag node id)
   | _ -> failwith nullary_warning
 
 let label x =
@@ -102,7 +101,7 @@ let dot_nullary (name_env : string env) exp =
   | _ -> failwith nullary_warning
 
 let stmts_of_label_expr ?(name_env = empty) exp =
-  fold_cps_tag dot_binary dot_unary (dot_nullary name_env) exp Base.Fn.id
+  fold_cps dot_binary dot_unary (dot_nullary name_env) exp Base.Fn.id
 
 let graph_of_stmts stmts =
   let stmts = List.map string_of_stmt stmts in

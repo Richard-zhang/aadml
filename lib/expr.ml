@@ -1,6 +1,6 @@
 open Util
 
-[@@@warning "-32-34-37-69"]
+[@@@warning "-32-34-37"]
 
 module IntMap = Map.Make (struct
   type t = int
@@ -14,43 +14,59 @@ let empty = IntMap.empty
 let update = IntMap.add
 let lookup key = IntMap.find key
 
-module type Tag = sig
-  type t
-end
+type ('tag, _) tag_expr =
+  | Const : 'tag * 'a -> ('tag, 'a) tag_expr
+  | Mul :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
+  | Add :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
+  | Sub :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
+  | Div :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
+  | Sin : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  | Cos : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  | Ln : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  | E : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  | Sqrt : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  | Zero : 'tag -> ('tag, 'a) tag_expr
+  | One : 'tag -> ('tag, 'a) tag_expr
+  | Var : 'tag * int -> ('tag, 'a) tag_expr
+  | Max :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
+  | Min :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
+  | Not : 'tag * ('tag, bool) tag_expr -> ('tag, bool) tag_expr
+  | And :
+      'tag * ('tag, bool) tag_expr * ('tag, bool) tag_expr
+      -> ('tag, bool) tag_expr
+  | Or :
+      'tag * ('tag, bool) tag_expr * ('tag, bool) tag_expr
+      -> ('tag, bool) tag_expr
+  | Equal :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, bool) tag_expr
+  | Less :
+      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, bool) tag_expr
+  | IfThenElse :
+      'tag * ('tag, bool) tag_expr * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
+      -> ('tag, 'a) tag_expr
 
-type _ expr =
-  | Const : 'a -> 'a expr
-  | Mul : 'a expr * 'a expr -> 'a expr
-  | Add : 'a expr * 'a expr -> 'a expr
-  | Sub : 'a expr * 'a expr -> 'a expr
-  | Div : 'a expr * 'a expr -> 'a expr
-  | Sin : 'a expr -> 'a expr
-  | Cos : 'a expr -> 'a expr
-  | Ln : 'a expr -> 'a expr
-  | E : 'a expr -> 'a expr
-  | Sqrt : 'a expr -> 'a expr
-  | Zero : 'a expr
-  | One : 'a expr
-  | Var : int -> 'a expr
-  | Max : 'a expr * 'a expr -> 'a expr
-  | Min : 'a expr * 'a expr -> 'a expr
-  | Not : bool expr -> bool expr
-  | And : bool expr * bool expr -> bool expr
-  | Or : bool expr * bool expr -> bool expr
-  | Equal : 'a expr * 'a expr -> bool expr
-  | Less : 'a expr * 'a expr -> bool expr
-  | IfThenElse : bool expr * 'a expr * 'a expr -> 'a expr
-
-type 'a binary = { op : 'elt. 'elt expr -> 'a -> 'a -> 'a }
-type 'a unary = { op : 'elt. 'elt expr -> 'a -> 'a }
-type 'a nullary = { op : 'elt. 'elt expr -> 'a }
+type 'a expr = (unit, 'a) tag_expr
 
 let rec fold_cps :
     type a.
-    (a expr -> _ -> _ -> _) ->
-    (a expr -> _ -> _) ->
-    (a expr -> _) ->
-    a expr ->
+    ((_, a) tag_expr -> _ -> _ -> _) ->
+    ((_, a) tag_expr -> _ -> _) ->
+    ((_, a) tag_expr -> _) ->
+    (_, a) tag_expr ->
     (_ -> _) ->
     _ =
  fun bin_op unary_op nullary_op x cont ->
@@ -64,40 +80,40 @@ let rec fold_cps :
             (bin_op exp) r_a r_b |> cont))
   in
   match x with
-  | Mul (a, b) -> binary_apply a b x
-  | Add (a, b) -> binary_apply a b x
-  | Sub (a, b) -> binary_apply a b x
-  | Div (a, b) -> binary_apply a b x
-  | Max (a, b) -> binary_apply a b x
-  | Min (a, b) -> binary_apply a b x
-  | Sin a -> unary_apply a x
-  | Cos a -> unary_apply a x
-  | Ln a -> unary_apply a x
-  | E a -> unary_apply a x
-  | Sqrt a -> unary_apply a x
-  | Zero -> nullary_apply x
-  | One -> nullary_apply x
+  | Mul (_, a, b) -> binary_apply a b x
+  | Add (_, a, b) -> binary_apply a b x
+  | Sub (_, a, b) -> binary_apply a b x
+  | Div (_, a, b) -> binary_apply a b x
+  | Max (_, a, b) -> binary_apply a b x
+  | Min (_, a, b) -> binary_apply a b x
+  | Sin (_, a) -> unary_apply a x
+  | Cos (_, a) -> unary_apply a x
+  | Ln (_, a) -> unary_apply a x
+  | E (_, a) -> unary_apply a x
+  | Sqrt (_, a) -> unary_apply a x
+  | Zero _ -> nullary_apply x
+  | One _ -> nullary_apply x
   | Const _ -> nullary_apply x
   | Var _ -> nullary_apply x
-  | Not a -> unary_apply a x
-  | And (a, b) -> binary_apply a b x
-  | Or (a, b) -> binary_apply a b x
+  | Not (_, a) -> unary_apply a x
+  | And (_, a, b) -> binary_apply a b x
+  | Or (_, a, b) -> binary_apply a b x
   (*     | Equal (a, b) -> binary_apply a b x *)
   | _ -> failwith "g"
 
-let add a b = Add (a, b)
-let mul a b = Mul (a, b)
-let sub a b = Sub (a, b)
-let div a b = Div (a, b)
-let cos a = Cos a
-let sin a = Sin a
-let e a = E a
-let ln a = Ln a
-let sqrt a = Sqrt a
-let zero = Zero
-let one = One
-let var id = Var id
-let const a = Const a
+let add a b = Add ((), a, b)
+let mul a b = Mul ((), a, b)
+let sub a b = Sub ((), a, b)
+let div a b = Div ((), a, b)
+let cos a = Cos ((), a)
+let sin a = Sin ((), a)
+let e a = E ((), a)
+let ln a = Ln ((), a)
+let sqrt a = Sqrt ((), a)
+let zero = Zero ()
+let one = One ()
+let var id = Var ((), id)
+let const a = Const ((), a)
 let neg a = sub zero a
 
 let power time n =
@@ -105,10 +121,10 @@ let power time n =
 
 let eval_nullary env exp =
   match exp with
-  | Zero -> 0.0
-  | One -> 1.0
-  | Const a -> a
-  | Var id -> lookup id env
+  | Zero _ -> 0.0
+  | One _ -> 1.0
+  | Const (_, a) -> a
+  | Var (_, id) -> lookup id env
   | _ -> failwith nullary_warning
 
 let eval_unary exp =
@@ -143,8 +159,38 @@ let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   | Ln _ -> "ln"
   | E _ -> "e"
   | Sqrt _ -> "sqrt"
-  | Zero -> "0"
-  | One -> "1"
-  | Const a -> show a
-  | Var id -> string_of_int id
-  | _ -> failwith "G"
+  | Zero _ -> "0"
+  | One _ -> "1"
+  | Const (_, a) -> show a
+  | Var (_, id) -> string_of_int id
+  | _ -> failwith "TODO"
+
+let get_tag = function
+  | Const (tag, _) -> tag
+  | Mul (tag, _, _) -> tag
+  | Add (tag, _, _) -> tag
+  | Sub (tag, _, _) -> tag
+  | Div (tag, _, _) -> tag
+  | Sin (tag, _) -> tag
+  | Cos (tag, _) -> tag
+  | Ln (tag, _) -> tag
+  | E (tag, _) -> tag
+  | Sqrt (tag, _) -> tag
+  | Zero tag -> tag
+  | One tag -> tag
+  | Var (tag, _) -> tag
+  | _ -> failwith "TODO"
+
+let add_tag tag a b = Add (tag, a, b)
+let mul_tag tag a b = Mul (tag, a, b)
+let sub_tag tag a b = Sub (tag, a, b)
+let div_tag tag a b = Div (tag, a, b)
+let cos_tag tag a = Cos (tag, a)
+let sin_tag tag a = Sin (tag, a)
+let e_tag tag a = E (tag, a)
+let ln_tag tag a = Ln (tag, a)
+let sqrt_tag tag v = Sqrt (tag, v)
+let zero_tag tag = Zero tag
+let one_tag tag = One tag
+let var_tag tag id = Var (tag, id)
+let const_tag tag v = Const (tag, v)

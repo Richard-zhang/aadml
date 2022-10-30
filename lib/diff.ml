@@ -2,19 +2,19 @@ open Expr
 open Util
 
 let diff_nullary id = function
-  | Var x -> if id = x then one else zero
-  | Zero -> zero
-  | One -> zero
+  | Var (_, x) -> if id = x then one else zero
+  | Zero _ -> zero
+  | One _ -> zero
   | Const _ -> zero
   | _ -> failwith nullary_warning
 
 let diff_unary exp =
   let diff_unary_help = function
-    | Sin a -> cos a
-    | Cos a -> sub zero (sin a)
-    | E a -> e a
-    | Ln a -> div one a
-    | Sqrt a -> div one (mul (add one one) (sqrt a))
+    | Sin (_, a) -> cos a
+    | Cos (_, a) -> sub zero (sin a)
+    | E (_, a) -> e a
+    | Ln (_, a) -> div one a
+    | Sqrt (_, a) -> div one (mul (add one one) (sqrt a))
     | _ -> failwith unary_warning
   in
   mul (diff_unary_help exp)
@@ -23,8 +23,8 @@ let diff_binary x a_dot b_dot =
   match x with
   | Add _ -> add a_dot b_dot
   | Sub _ -> sub a_dot b_dot
-  | Mul (a, b) -> add (mul a_dot b) (mul a b_dot)
-  | Div (a, b) ->
+  | Mul (_, a, b) -> add (mul a_dot b) (mul a b_dot)
+  | Div (_, a, b) ->
       let u'v = mul a_dot b in
       let uv' = mul a b_dot in
       div (sub u'v uv') (mul b b)
@@ -39,9 +39,9 @@ let symbolic_diff env id formula =
 [@@@warning "-32-34-37"]
 
 let eval_diff_nullary id = function
-  | Var x -> if id = x then 1.0 else 0.0
-  | Zero -> 0.0
-  | One -> 0.0
+  | Var (_, x) -> if id = x then 1.0 else 0.0
+  | Zero _ -> 0.0
+  | One _ -> 0.0
   | Const _ -> 0.0
   | _ -> failwith "nullary"
 
@@ -77,10 +77,10 @@ type forward_t = float * float
 
 let eval_nullary env exp =
   match exp with
-  | Zero -> 0.0
-  | One -> 1.0
-  | Const a -> a
-  | Var id -> lookup id env
+  | Zero _ -> 0.0
+  | One _ -> 1.0
+  | Const (_, a) -> a
+  | Var (_, id) -> lookup id env
   | _ -> failwith nullary_warning
 
 let eval_unary exp =
@@ -124,7 +124,6 @@ backward diff is two pass
 1. forward pass: annotate the value at each operation
 2. back propagation: traverse the graph backwards
 *)
-open Tag
 
 (* is there a way work around with this problem *)
 let eval_tag_bianry (exp : 'a expr) left right =
@@ -149,10 +148,10 @@ let eval_tag_unary (exp : 'a expr) value =
 
 let eval_tag_nullary env (exp : 'a expr) =
   match exp with
-  | Zero -> zero_tag 0.0
-  | One -> one_tag 1.0
-  | Const a -> const_tag a a
-  | Var id -> var_tag (lookup id env) id
+  | Zero _ -> zero_tag 0.0
+  | One _ -> one_tag 1.0
+  | Const (_, a) -> const_tag a a
+  | Var (_, id) -> var_tag (lookup id env) id
   | _ -> failwith nullary_warning
 
 let eval_tag env x =
@@ -213,8 +212,7 @@ let backprop_nullary v v_derv =
   | _ -> failwith nullary_warning
 
 let backprop x =
-  (fold_cps_tag backprop_binary backprop_unary backprop_nullary x Base.Fn.id)
-    1.0
+  (fold_cps backprop_binary backprop_unary backprop_nullary x Base.Fn.id) 1.0
 
 let collect_result x =
   let collect_result_nullary x =
@@ -224,8 +222,8 @@ let collect_result x =
   let collect_result_binary _ l r =
     IntMap.union (fun _ a b -> Some (a +. b)) l r
   in
-  fold_cps_tag collect_result_binary collect_result_unary collect_result_nullary
-    x Base.Fn.id
+  fold_cps collect_result_binary collect_result_unary collect_result_nullary x
+    Base.Fn.id
 
 let backward_all_diff env formula =
   eval_tag env formula |> backprop |> collect_result
@@ -258,8 +256,8 @@ let test_can_derv formula =
   let _ = diff 0 formula in
   [%test_eq: Base.float] 0.0 0.0
 
-let%test_unit "const" = [%test_eq: Base.float] (eval empty (Const 1.0)) 1.0
-let%test "const" = eval empty (Const 1.0) = 1.0
+let%test_unit "const" = [%test_eq: Base.float] (eval empty (const 1.0)) 1.0
+let%test "const" = eval empty (const 1.0) = 1.0
 
 let test_simple diff_evals formula a derv_a b derv_b =
   let env = empty |> update 0 a |> update 1 b in
