@@ -1,6 +1,6 @@
 open Util
 
-[@@@warning "-32-34-37"]
+[@@@warning "-32-34-37-69"]
 
 module IntMap = Map.Make (struct
   type t = int
@@ -41,43 +41,49 @@ type _ expr =
   | Less : 'a expr * 'a expr -> bool expr
   | IfThenElse : bool expr * 'a expr * 'a expr -> 'a expr
 
-let fold_cps (type a) =
-  let rec fold_cps_impl (bin_op : a expr -> 'b -> 'b -> 'b)
-      (unary_op : a expr -> 'b -> 'b) (nullary_op : a expr -> 'b) (x : a expr)
-      (cont : 'b -> 'c) =
-    let nullary_apply exp = nullary_op exp |> cont in
-    let unary_apply a exp =
-      fold_cps_impl bin_op unary_op nullary_op a (fun r ->
-          (unary_op exp) r |> cont)
-    in
-    let binary_apply a b exp =
-      fold_cps_impl bin_op unary_op nullary_op a (fun r_a ->
-          fold_cps_impl bin_op unary_op nullary_op b (fun r_b ->
-              (bin_op exp) r_a r_b |> cont))
-    in
-    match x with
-    | Mul (a, b) -> binary_apply a b x
-    | Add (a, b) -> binary_apply a b x
-    | Sub (a, b) -> binary_apply a b x
-    | Div (a, b) -> binary_apply a b x
-    | Max (a, b) -> binary_apply a b x
-    | Min (a, b) -> binary_apply a b x
-    | Sin a -> unary_apply a x
-    | Cos a -> unary_apply a x
-    | Ln a -> unary_apply a x
-    | E a -> unary_apply a x
-    | Sqrt a -> unary_apply a x
-    | Zero -> nullary_apply x
-    | One -> nullary_apply x
-    | Const _ -> nullary_apply x
-    | Var _ -> nullary_apply x
-    | Not a -> unary_apply a x
-    | And (a, b) -> binary_apply a b x
-    | Or (a, b) -> binary_apply a b x
-    (*     | Equal (a, b) -> binary_apply a b x *)
-    | _ -> failwith "g"
+type 'a binary = { op : 'elt. 'elt expr -> 'a -> 'a -> 'a }
+type 'a unary = { op : 'elt. 'elt expr -> 'a -> 'a }
+type 'a nullary = { op : 'elt. 'elt expr -> 'a }
+
+let rec fold_cps :
+    type a.
+    (a expr -> _ -> _ -> _) ->
+    (a expr -> _ -> _) ->
+    (a expr -> _) ->
+    a expr ->
+    (_ -> _) ->
+    _ =
+ fun bin_op unary_op nullary_op x cont ->
+  let nullary_apply exp = nullary_op exp |> cont in
+  let unary_apply a exp =
+    fold_cps bin_op unary_op nullary_op a (fun r -> (unary_op exp) r |> cont)
   in
-  fold_cps_impl
+  let binary_apply a b exp =
+    fold_cps bin_op unary_op nullary_op a (fun r_a ->
+        fold_cps bin_op unary_op nullary_op b (fun r_b ->
+            (bin_op exp) r_a r_b |> cont))
+  in
+  match x with
+  | Mul (a, b) -> binary_apply a b x
+  | Add (a, b) -> binary_apply a b x
+  | Sub (a, b) -> binary_apply a b x
+  | Div (a, b) -> binary_apply a b x
+  | Max (a, b) -> binary_apply a b x
+  | Min (a, b) -> binary_apply a b x
+  | Sin a -> unary_apply a x
+  | Cos a -> unary_apply a x
+  | Ln a -> unary_apply a x
+  | E a -> unary_apply a x
+  | Sqrt a -> unary_apply a x
+  | Zero -> nullary_apply x
+  | One -> nullary_apply x
+  | Const _ -> nullary_apply x
+  | Var _ -> nullary_apply x
+  | Not a -> unary_apply a x
+  | And (a, b) -> binary_apply a b x
+  | Or (a, b) -> binary_apply a b x
+  (*     | Equal (a, b) -> binary_apply a b x *)
+  | _ -> failwith "g"
 
 let add a b = Add (a, b)
 let mul a b = Mul (a, b)
