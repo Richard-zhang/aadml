@@ -15,7 +15,7 @@ let update = IntMap.add
 let lookup key = IntMap.find key
 
 type ('tag, _) tag_expr =
-  | Const : 'tag * 'a -> ('tag, 'a) tag_expr
+  | Const : 'tag * float -> ('tag, float) tag_expr
   | Mul :
       'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
       -> ('tag, 'a) tag_expr
@@ -59,25 +59,28 @@ type ('tag, _) tag_expr =
       'tag * ('tag, bool) tag_expr * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
       -> ('tag, 'a) tag_expr
 
+type ('tag, 'a) nullary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a }
+type ('tag, 'a) unary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a }
+type ('tag, 'a) binary = { op : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a }
 type 'a expr = (unit, 'a) tag_expr
 
 let rec fold_cps :
     type a.
-    ((_, a) tag_expr -> _ -> _ -> _) ->
-    ((_, a) tag_expr -> _ -> _) ->
-    ((_, a) tag_expr -> _) ->
+    (_, _) binary ->
+    (_, _) unary ->
+    (_, _) nullary ->
     (_, a) tag_expr ->
     (_ -> _) ->
     _ =
  fun bin_op unary_op nullary_op x cont ->
-  let nullary_apply exp = nullary_op exp |> cont in
+  let nullary_apply exp = nullary_op.op exp |> cont in
   let unary_apply a exp =
-    fold_cps bin_op unary_op nullary_op a (fun r -> (unary_op exp) r |> cont)
+    fold_cps bin_op unary_op nullary_op a (fun r -> (unary_op.op exp) r |> cont)
   in
   let binary_apply a b exp =
     fold_cps bin_op unary_op nullary_op a (fun r_a ->
         fold_cps bin_op unary_op nullary_op b (fun r_b ->
-            (bin_op exp) r_a r_b |> cont))
+            (bin_op.op exp) r_a r_b |> cont))
   in
   match x with
   | Mul (_, a, b) -> binary_apply a b x
@@ -99,7 +102,7 @@ let rec fold_cps :
   | And (_, a, b) -> binary_apply a b x
   | Or (_, a, b) -> binary_apply a b x
   (*     | Equal (a, b) -> binary_apply a b x *)
-  | _ -> failwith "g"
+  | _ -> failwith "TODO"
 
 let add a b = Add ((), a, b)
 let mul a b = Mul ((), a, b)
@@ -119,13 +122,20 @@ let neg a = sub zero a
 let power time n =
   if time == 0 then one else Base.Fn.apply_n_times ~n:(time - 1) (mul n) n
 
-let eval_nullary env exp =
-  match exp with
-  | Zero _ -> 0.0
-  | One _ -> 1.0
-  | Const (_, a) -> a
-  | Var (_, id) -> lookup id env
-  | _ -> failwith nullary_warning
+module Eq = struct
+  type (_, _) t = Refl : ('a, 'a) t
+end
+
+let eval_nullary : type b. float env -> (b, float) nullary =
+ fun env ->
+  let op : type a. (b, a) tag_expr -> float = function
+    | Zero _ -> 0.0
+    | One _ -> 1.0
+    | Const (_, a) -> a
+    | Var (_, id) -> lookup id env
+    | _ -> failwith nullary_warning
+  in
+  { op }
 
 let eval_unary exp =
   match exp with
@@ -146,7 +156,9 @@ let eval_binary exp =
   | Min _ -> Float.min
   | _ -> failwith binary_warning
 
-let eval env x = fold_cps eval_binary eval_unary (eval_nullary env) x Base.Fn.id
+let eval env x =
+  fold_cps { op = eval_binary } { op = eval_unary } (eval_nullary env) x
+    Base.Fn.id
 
 let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   match exp with
@@ -163,9 +175,16 @@ let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   | One _ -> "1"
   | Const (_, a) -> show a
   | Var (_, id) -> string_of_int id
-  | _ -> failwith "TODO"
+  | Max _ -> "max"
+  | Min _ -> "min"
+  | Not _ -> "not"
+  | And _ -> "and"
+  | Or _ -> "or"
+  | Equal _ -> "equal"
+  | Less _ -> "less"
+  | IfThenElse _ -> "If"
 
-let get_tag = function
+let get_tag : type a. (_, a) tag_expr -> _ = function
   | Const (tag, _) -> tag
   | Mul (tag, _, _) -> tag
   | Add (tag, _, _) -> tag
@@ -179,7 +198,14 @@ let get_tag = function
   | Zero tag -> tag
   | One tag -> tag
   | Var (tag, _) -> tag
-  | _ -> failwith "TODO"
+  | Max (tag, _, _) -> tag
+  | Min (tag, _, _) -> tag
+  | Not (tag, _) -> tag
+  | And (tag, _, _) -> tag
+  | Or (tag, _, _) -> tag
+  | Equal (tag, _, _) -> tag
+  | Less (tag, _, _) -> tag
+  | IfThenElse (tag, _, _, _) -> tag
 
 let add_tag tag a b = Add (tag, a, b)
 let mul_tag tag a b = Mul (tag, a, b)
