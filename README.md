@@ -82,4 +82,7 @@
           * [polynomial type expression](https://v2.ocaml.org/manual/types.html#poly-typexpr)
 
 * [GADT](https://v2.ocaml.org/manual/gadts-tutorial.html)
+  * absence of an explicit polymorphic annotation
+    * $App_'b denotes an existential type named by the compiler
+    * existential type variable cannot escape its scope
 * Existential vs. Universally quantified types

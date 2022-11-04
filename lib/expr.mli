@@ -71,6 +71,11 @@ val fold_cps :
   'c
 
 type 'a expr = (unit, 'a) tag_expr
+type (_, _) eq = Eq : ('a, 'a) eq
+
+val equal : ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr -> ('a, 'b) eq option
+val cast : ('a, 'b) eq -> ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr
+val unsafe_cast : ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr
 
 val add : 'a expr -> 'a expr -> 'a expr
 val mul : 'a expr -> 'a expr -> 'a expr

@@ -1,36 +1,58 @@
 open Expr
 open Util
 
-let diff_nullary id = function
-  | Var (_, x) -> if id = x then one else zero
-  | Zero _ -> zero
-  | One _ -> zero
-  | Const _ -> zero
-  | _ -> failwith nullary_warning
-
-let diff_unary exp =
-  let diff_unary_help = function
-    | Sin (_, a) -> cos a
-    | Cos (_, a) -> sub zero (sin a)
-    | E (_, a) -> e a
-    | Ln (_, a) -> div one a
-    | Sqrt (_, a) -> div one (mul (add one one) (sqrt a))
-    | _ -> failwith unary_warning
+let diff_ternary =
+  let top : type a. (_, a) tag_expr -> _ -> _ -> _ -> _ = function
+    | Cond _ -> failwith "TODO"
+    | _ -> failwith ternary_warning
   in
-  mul (diff_unary_help exp)
+  { top }
 
-let diff_binary x a_dot b_dot =
-  match x with
-  | Add _ -> add a_dot b_dot
-  | Sub _ -> sub a_dot b_dot
-  | Mul (_, a, b) -> add (mul a_dot b) (mul a b_dot)
-  | Div (_, a, b) ->
-      let u'v = mul a_dot b in
-      let uv' = mul a b_dot in
-      div (sub u'v uv') (mul b b)
-  | _ -> failwith binary_warning
+let diff_nullary id =
+  let nop : type a. (_, a) tag_expr -> _ = function
+    | Var (_, x) -> if id = x then one else zero
+    | Zero _ -> zero
+    | One _ -> zero
+    | Const _ -> zero
+    | _ -> failwith nullary_warning
+  in
+  { nop }
 
-let diff id x = fold_cps diff_binary diff_unary (diff_nullary id) x Base.Fn.id
+let diff_unary =
+  let uop : type a b. a expr -> b expr -> b expr =
+   fun exp bexp ->
+    let diff_unary_help = function
+      | Sin (_, a) -> cos a
+      | Cos (_, a) -> sub zero (sin a)
+      | E (_, a) -> e a
+      | Ln (_, a) -> div one a
+      | Sqrt (_, a) -> div one (mul (add one one) (sqrt a))
+      | _ -> failwith unary_warning
+    in
+    mul (unsafe_cast (diff_unary_help exp)) bexp
+  in
+  { uop }
+
+let diff_binary =
+  let bop : type a b. a expr -> b expr -> b expr -> b expr =
+   fun x a_dot b_dot ->
+    match x with
+    | Add _ -> add a_dot b_dot
+    | Sub _ -> sub a_dot b_dot
+    | Mul (_, a, b) ->
+        add (mul a_dot (unsafe_cast b)) (mul (unsafe_cast a) b_dot)
+    | Div (_, a, b) ->
+        let cast_b = unsafe_cast b in
+        let cast_a = unsafe_cast a in
+        let u'v = mul a_dot cast_b in
+        let uv' = mul cast_a b_dot in
+        div (sub u'v uv') (mul cast_b cast_b)
+    | _ -> failwith binary_warning
+  in
+  { bop }
+
+let diff id x =
+  fold_cps diff_ternary diff_binary diff_unary (diff_nullary id) x Base.Fn.id
 
 let symbolic_diff env id formula =
   let diff_formula = diff id formula in

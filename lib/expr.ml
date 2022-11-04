@@ -68,6 +68,36 @@ type ('tag, 'a) ternary = {
 }
 
 type 'a expr = (unit, 'a) tag_expr
+type (_, _) eq = Eq : ('a, 'a) eq
+
+let rec equal : type a b. (_, a) tag_expr -> (_, b) tag_expr -> (a, b) eq option
+    =
+ fun a b ->
+  let unary_apply :
+      type a b. (_, a) tag_expr -> (_, b) tag_expr -> (a, b) eq option =
+   fun x y -> match equal x y with Some Eq -> Some Eq | _ -> None
+  in
+  match (a, b) with
+  | Const _, Const _ -> Some Eq
+  | Sin (_, a), Sin (_, b) -> unary_apply a b
+  | _, _ -> None
+
+let cast : type a b. (a, b) eq -> (_, a) tag_expr -> (_, b) tag_expr =
+ fun Eq x -> x
+
+let safe_cast : type a. ('tag, a) tag_expr -> ('tag, float) tag_expr = function
+  | Const (tag, a) -> Const (tag, a)
+  | _ -> failwith "G"
+
+let rec unsafe_cast : type a b. ('tag, a) tag_expr -> ('tag, b) tag_expr =
+ fun x ->
+  match x with
+  | Zero tag -> Zero tag
+  | Const (_, a) -> failwith "G"
+  | Var (tag, id) -> Var (tag, id)
+  | Add (tag, a, b) -> Add (tag, unsafe_cast a, unsafe_cast b)
+  | Sin (tag, a) -> Sin (tag, unsafe_cast a)
+  | _ -> failwith "G"
 
 let rec fold_cps :
     type a.
