@@ -67,37 +67,35 @@ type ('tag, 'a) ternary = {
   top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
 }
 
+let pair_nullary (type a b) (fa : (_, a) nullary) (fb : (_, b) nullary) =
+  { nop = (fun expr -> (fa.nop expr, fb.nop expr)) }
+
+let pair_unary (type a b) (fa : (_, a) unary) (fb : (_, b) unary) =
+  { uop = (fun expr x -> (fa.uop expr (fst x), fb.uop expr (snd x))) }
+
+let pair_binary (type a b) (fa : (_, a) binary) (fb : (_, b) binary) =
+  {
+    bop = (fun expr (x1, y1) (x2, y2) -> (fa.bop expr x1 x2, fb.bop expr y1 y2));
+  }
+
+let pair_ternary (type a b) (fa : (_, a) ternary) (fb : (_, b) ternary) =
+  {
+    top =
+      (fun expr (x1, x2) (y1, y2) (z1, z2) ->
+        (fa.top expr x1 y1 z1, fb.top expr x2 y2 z2));
+  }
+
 type 'a expr = (unit, 'a) tag_expr
-type (_, _) eq = Eq : ('a, 'a) eq
-
-let rec equal : type a b. (_, a) tag_expr -> (_, b) tag_expr -> (a, b) eq option
-    =
- fun a b ->
-  let unary_apply :
-      type a b. (_, a) tag_expr -> (_, b) tag_expr -> (a, b) eq option =
-   fun x y -> match equal x y with Some Eq -> Some Eq | _ -> None
-  in
-  match (a, b) with
-  | Const _, Const _ -> Some Eq
-  | Sin (_, a), Sin (_, b) -> unary_apply a b
-  | _, _ -> None
-
-let cast : type a b. (a, b) eq -> (_, a) tag_expr -> (_, b) tag_expr =
- fun Eq x -> x
-
-let safe_cast : type a. ('tag, a) tag_expr -> ('tag, float) tag_expr = function
-  | Const (tag, a) -> Const (tag, a)
-  | _ -> failwith "G"
 
 let rec unsafe_cast : type a b. ('tag, a) tag_expr -> ('tag, b) tag_expr =
  fun x ->
   match x with
   | Zero tag -> Zero tag
-  | Const (_, a) -> failwith "G"
+  | Const (_, _) -> failwith "TODO"
   | Var (tag, id) -> Var (tag, id)
   | Add (tag, a, b) -> Add (tag, unsafe_cast a, unsafe_cast b)
   | Sin (tag, a) -> Sin (tag, unsafe_cast a)
-  | _ -> failwith "G"
+  | _ -> failwith "TODO"
 
 let rec fold_cps :
     type a.

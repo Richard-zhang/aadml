@@ -5,10 +5,13 @@ type node = Op of int * string | Input of int
 
 let id_of_node = function Op (id, _) -> id | Input id -> id
 
-let get_node (exp : 'a expr) label =
+(* show type class in OCaml *)
+let get_node (type a) (show : a -> string) (exp : a expr) label =
   match exp with
   | Var (_, id) -> Input (-1 * id)
-  | _ -> Op (label, string_of_op ~show:(Printf.sprintf "%0.2f") exp)
+  | _ -> Op (label, string_of_op ~show exp)
+
+let float_show = Printf.sprintf "%0.2f"
 
 (* pre order traversal using label *)
 let label_binary (exp : 'a expr) fl fr label =
@@ -16,10 +19,10 @@ let label_binary (exp : 'a expr) fl fr label =
   let right_label, right = fr (left_label + 1) in
   let result =
     match exp with
-    | Add _ -> add_tag (get_node exp label) left right
-    | Sub _ -> sub_tag (get_node exp label) left right
-    | Div _ -> div_tag (get_node exp label) left right
-    | Mul _ -> mul_tag (get_node exp label) left right
+    | Add _ -> add_tag (get_node float_show exp label) left right
+    | Sub _ -> sub_tag (get_node float_show exp label) left right
+    | Div _ -> div_tag (get_node float_show exp label) left right
+    | Mul _ -> mul_tag (get_node float_show exp label) left right
     | _ -> failwith binary_warning
   in
   (right_label, result)

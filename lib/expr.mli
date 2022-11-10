@@ -59,6 +59,12 @@ type ('tag, 'a) ternary = {
   top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
 }
 
+val pair_nullary : ('c, 'a) nullary -> ('c, 'b) nullary -> ('c, 'a * 'b) nullary
+val pair_unary : ('c, 'a) unary -> ('c, 'b) unary -> ('c, 'a * 'b) unary
+val pair_binary : ('c, 'a) binary -> ('c, 'b) binary -> ('c, 'a * 'b) binary
+val pair_ternary : ('c, 'a) ternary -> ('c, 'b) ternary -> ('c, 'a * 'b) ternary
+val first_nullary : ('c, 'a) ternary -> ('c, 'a * 'b) ternary
+val first_unary : ('c, 'a) unary -> ('c, 'a * 'b) ternary
 val get_tag : ('tag, 'b) tag_expr -> 'tag
 
 val fold_cps :
@@ -71,12 +77,8 @@ val fold_cps :
   'c
 
 type 'a expr = (unit, 'a) tag_expr
-type (_, _) eq = Eq : ('a, 'a) eq
 
-val equal : ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr -> ('a, 'b) eq option
-val cast : ('a, 'b) eq -> ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr
 val unsafe_cast : ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr
-
 val add : 'a expr -> 'a expr -> 'a expr
 val mul : 'a expr -> 'a expr -> 'a expr
 val sub : 'a expr -> 'a expr -> 'a expr
