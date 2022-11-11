@@ -59,12 +59,6 @@ type ('tag, 'a) ternary = {
   top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
 }
 
-val pair_nullary : ('c, 'a) nullary -> ('c, 'b) nullary -> ('c, 'a * 'b) nullary
-val pair_unary : ('c, 'a) unary -> ('c, 'b) unary -> ('c, 'a * 'b) unary
-val pair_binary : ('c, 'a) binary -> ('c, 'b) binary -> ('c, 'a * 'b) binary
-val pair_ternary : ('c, 'a) ternary -> ('c, 'b) ternary -> ('c, 'a * 'b) ternary
-val first_nullary : ('c, 'a) ternary -> ('c, 'a * 'b) ternary
-val first_unary : ('c, 'a) unary -> ('c, 'a * 'b) ternary
 val get_tag : ('tag, 'b) tag_expr -> 'tag
 
 val fold_cps :
@@ -77,8 +71,13 @@ val fold_cps :
   'c
 
 type 'a expr = (unit, 'a) tag_expr
+type 'tag any = Any : ('tag, 'a) tag_expr -> 'tag any
+type _ ty = TyFloat : float ty | TyBool : bool ty | TyAny : 'a ty
 
+val tyExpr : ('tag, 'a) tag_expr -> 'a ty
 val unsafe_cast : ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr
+val cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr option
+val majic_cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr
 val add : 'a expr -> 'a expr -> 'a expr
 val mul : 'a expr -> 'a expr -> 'a expr
 val sub : 'a expr -> 'a expr -> 'a expr
@@ -116,6 +115,7 @@ val zero_tag : 'tag -> ('tag, 'a) tag_expr
 val one_tag : 'tag -> ('tag, 'a) tag_expr
 val var_tag : 'tag -> int -> ('tag, 'a) tag_expr
 val const_tag : 'tag -> float -> ('tag, float) tag_expr
+val not_tag : 'tag -> ('tag, bool) tag_expr -> ('tag, bool) tag_expr
 
 val eval : float env -> float expr -> float
 (** naive evaluation implemented via tree traversal *)

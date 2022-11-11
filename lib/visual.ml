@@ -31,17 +31,17 @@ let label_unary (exp : 'a expr) f label =
   let final_label, value = f (label + 1) in
   let result =
     match exp with
-    | Sin _ -> sin_tag (get_node exp label) value
-    | Cos _ -> cos_tag (get_node exp label) value
-    | Ln _ -> ln_tag (get_node exp label) value
-    | E _ -> e_tag (get_node exp label) value
-    | Sqrt _ -> sqrt_tag (get_node exp label) value
+    | Sin _ -> sin_tag (get_node float_show exp label) value
+    | Cos _ -> cos_tag (get_node float_show exp label) value
+    | Ln _ -> ln_tag (get_node float_show exp label) value
+    | E _ -> e_tag (get_node float_show exp label) value
+    | Sqrt _ -> sqrt_tag (get_node float_show exp label) value
     | _ -> failwith unary_warning
   in
   (final_label, result)
 
 let label_nullary (exp : 'a expr) label =
-  let node = get_node exp label in
+  let node = get_node float_show exp label in
   match exp with
   | Zero _ -> (label, zero_tag node)
   | One _ -> (label, one_tag node)

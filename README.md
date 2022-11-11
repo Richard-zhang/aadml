@@ -86,3 +86,12 @@
     * $App_'b denotes an existential type named by the compiler
     * existential type variable cannot escape its scope
 * Existential vs. Universally quantified types
+
+## Next Step
+
+* Simplifying the description true to be of
+  * type bool - support logical operation
+  * type float - support floating point operation
+
+* think about how recursion-scheme can come into plays
+* Add more constraints on GADTs

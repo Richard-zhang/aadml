@@ -1,3 +1,5 @@
+[@@@warning "-32-34-37"]
+
 open Expr
 open Util
 
@@ -58,86 +60,66 @@ let symbolic_diff env id formula =
   let diff_formula = diff id formula in
   eval env diff_formula
 
-[@@@warning "-32-34-37"]
-
-let eval_diff_nullary id = function
-  | Var (_, x) -> if id = x then 1.0 else 0.0
-  | Zero _ -> 0.0
-  | One _ -> 0.0
-  | Const _ -> 0.0
-  | _ -> failwith "nullary"
-
-(*
-  Base.Fn.compose : ('b -> 'c) -> ('a -> 'b) -> ('a -> 'b)
-  ( *. ) : float1 -> (float2 -> float3)
-  evaluator : float0 -> float1
-  compose : (float1 -> (float2 -> float3)) -> (float0 -> float1) -> (float 0 -> (float 2 -> float 3))
-  compose ( *. ) evaluator : float0 -> float2 -> float3
-*)
-let eval_diff_unary op =
-  Base.Fn.compose ( *. )
-    (match op with
-    | Sin _ -> Float.cos
-    | Cos _ -> Base.Fn.compose Float.neg Float.cos
-    | E _ -> Float.exp
-    | Ln _ -> ( /. ) 1.0
-    | Sqrt _ -> fun x -> x |> Float.sqrt |> ( /. ) 0.5
-    | _ -> failwith unary_warning)
-
-let eval_diff_binary op (left_val, left_diff) (right_val, right_diff) =
-  match op with
-  | Add _ -> left_diff +. right_diff
-  | Sub _ -> left_diff -. right_diff
-  | Mul _ -> (left_diff *. right_val) +. (left_val *. right_diff)
-  | Div _ ->
-      let u'v = left_diff *. right_val in
-      let uv' = left_val *. right_diff in
-      (u'v -. uv') /. (right_val *. right_val)
-  | _ -> failwith binary_warning
-
 type forward_t = float * float
 
-let eval_nullary env exp =
-  match exp with
-  | Zero _ -> 0.0
-  | One _ -> 1.0
-  | Const (_, a) -> a
-  | Var (_, id) -> lookup id env
-  | _ -> failwith nullary_warning
+let combine_eval_diff_nullary env id =
+  let nop : type a. (_, a) tag_expr -> _ =
+   fun op ->
+    match op with
+    | Zero _ -> (0.0, 0.0)
+    | One _ -> (1.0, 0.0)
+    | Const (_, a) -> (a, 0.0)
+    | Var (_, x) -> (lookup id env, if id = x then 1.0 else 0.0)
+    | _ -> failwith nullary_warning
+  in
+  { nop }
 
-let eval_unary exp =
-  match exp with
-  | Sin _ -> Float.sin
-  | Cos _ -> Float.cos
-  | Ln _ -> Float.log
-  | E _ -> Float.exp
-  | Sqrt _ -> Float.sqrt
-  | _ -> failwith unary_warning
+(* merge eval_unary with eval_diff_unary *)
+(* d(f(v))/dx = d(f(v))/dv * dv/dx = f'(prev_val) * prev_diff *)
+let combine_eval_diff_unary : (_, float * float) unary =
+  let uop : type a. (_, a) tag_expr -> _ -> _ =
+   fun op ->
+    let helper eval diff (prev_val, prev_diff) =
+      (eval prev_val, prev_diff *. diff prev_val)
+    in
+    match op with
+    | Sin _ -> helper Float.sin Float.cos
+    | Cos _ -> helper Float.cos (Base.Fn.compose Float.neg Float.sin)
+    | E _ -> helper Float.exp Float.exp
+    | Ln _ -> helper Float.log (( /. ) 1.0)
+    | Sqrt _ -> helper Float.sqrt (Base.Fn.compose (( /. ) 0.5) Float.sqrt)
+    | _ -> failwith unary_warning
+  in
+  { uop }
 
-let eval_binary exp =
-  match exp with
-  | Add _ -> ( +. )
-  | Sub _ -> ( -. )
-  | Div _ -> ( /. )
-  | Mul _ -> ( *. )
-  | _ -> failwith binary_warning
+let combine_eval_diff_binary =
+  let bop : type a. (_, a) tag_expr -> _ -> _ -> _ =
+   fun op ->
+    let helper eval diff (left_val, left_diff) (right_val, right_diff) =
+      ( eval left_val right_val,
+        diff (left_val, left_diff) (right_val, right_diff) )
+    in
+    match op with
+    | Add _ -> helper ( +. ) (fun (_, x') (_, y') -> x' +. y')
+    | Sub _ -> helper ( -. ) (fun (_, x') (_, y') -> x' -. y')
+    | Mul _ -> helper ( *. ) (fun (x, x') (y, y') -> (x' *. y) +. (x *. y'))
+    | Div _ ->
+        helper ( /. ) (fun (x, x') (y, y') ->
+            let u'v = x' *. y in
+            let uv' = x *. y' in
+            (u'v -. uv') /. (y *. y))
+    | _ -> failwith binary_warning
+  in
+  { bop }
 
-let combine_eval_diff_nullary env id x : forward_t =
-  (eval_nullary env x, eval_diff_nullary id x)
-
-let combine_eval_diff_unary x ((prev_value, prev_diff) : forward_t) : forward_t
-    =
-  (eval_unary x prev_value, eval_diff_unary x prev_value prev_diff)
-
-let combine_eval_diff_binary x (left : forward_t) (right : forward_t) :
-    forward_t =
-  (eval_binary x (fst left) (fst right), eval_diff_binary x left right)
+let combine_eval_diff_ternary : (_, float * float) ternary = failwith "TODO"
 
 (*
   forword diff calculate forward and diff at the same time 
 *)
 let forward_diff env id x =
-  fold_cps combine_eval_diff_binary combine_eval_diff_unary
+  fold_cps combine_eval_diff_ternary combine_eval_diff_binary
+    combine_eval_diff_unary
     (combine_eval_diff_nullary env id)
     x snd
 
@@ -158,7 +140,22 @@ let eval_tag_bianry (exp : 'a expr) left right =
   | Mul _ -> mul_tag (left_tag *. right_tag) left right
   | _ -> failwith binary_warning
 
-let eval_tag_unary (exp : 'a expr) value =
+(* need a type witness on existentially quantified type *)
+let eval_tag_unary =
+  let uop : type a. a expr -> float any -> float any =
+   fun exp (Any value) ->
+    let tag = get_tag value in
+    match exp with
+    | Not _ -> Any (not_tag (Float.neg tag) (majic_cast value TyBool))
+    | Sin _ -> Any (sin_tag (Float.sin tag) value)
+    | Cos _ -> Any (cos_tag (Float.cos tag) value)
+    | Ln _ -> Any (ln_tag (Float.log tag) value)
+    | E _ -> Any (e_tag (Float.exp tag) value)
+    | Sqrt _ -> Any (sqrt_tag (Float.sqrt tag) value)
+    | _ -> failwith unary_warning
+  in
+  { uop }
+(*
   let tag = get_tag value in
   match exp with
   | Sin _ -> sin_tag (Float.sin tag) value
@@ -167,17 +164,27 @@ let eval_tag_unary (exp : 'a expr) value =
   | E _ -> e_tag (Float.exp tag) value
   | Sqrt _ -> sqrt_tag (Float.sqrt tag) value
   | _ -> failwith unary_warning
+*)
 
-let eval_tag_nullary env (exp : 'a expr) =
-  match exp with
-  | Zero _ -> zero_tag 0.0
-  | One _ -> one_tag 1.0
-  | Const (_, a) -> const_tag a a
-  | Var (_, id) -> var_tag (lookup id env) id
-  | _ -> failwith nullary_warning
+let eval_tag_nullary env =
+  let nop : type a. a expr -> (float, 'b) tag_expr =
+   fun exp ->
+    match exp with
+    | Zero _ -> zero_tag 0.0
+    | One _ -> one_tag 1.0
+    | Const (_, a) -> const_tag a a
+    | Var (_, id) -> var_tag (lookup id env) id
+    | _ -> failwith nullary_warning
+  in
+  { nop }
 
+let eval_tag_ternary : (_, float) ternary = failwith "TODO"
+
+(* this is impossible because we have bool expr *)
+(* have to use existential type *)
 let eval_tag env x =
-  fold_cps eval_tag_bianry eval_tag_unary (eval_tag_nullary env) x Base.Fn.id
+  fold_cps eval_tag_ternary eval_tag_bianry eval_tag_unary
+    (eval_tag_nullary env) x Base.Fn.id
 
 (* fold over the tree that returns a function *)
 

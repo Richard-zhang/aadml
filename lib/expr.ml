@@ -67,25 +67,33 @@ type ('tag, 'a) ternary = {
   top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
 }
 
-let pair_nullary (type a b) (fa : (_, a) nullary) (fb : (_, b) nullary) =
-  { nop = (fun expr -> (fa.nop expr, fb.nop expr)) }
-
-let pair_unary (type a b) (fa : (_, a) unary) (fb : (_, b) unary) =
-  { uop = (fun expr x -> (fa.uop expr (fst x), fb.uop expr (snd x))) }
-
-let pair_binary (type a b) (fa : (_, a) binary) (fb : (_, b) binary) =
-  {
-    bop = (fun expr (x1, y1) (x2, y2) -> (fa.bop expr x1 x2, fb.bop expr y1 y2));
-  }
-
-let pair_ternary (type a b) (fa : (_, a) ternary) (fb : (_, b) ternary) =
-  {
-    top =
-      (fun expr (x1, x2) (y1, y2) (z1, z2) ->
-        (fa.top expr x1 y1 z1, fb.top expr x2 y2 z2));
-  }
-
 type 'a expr = (unit, 'a) tag_expr
+type _ ty = TyFloat : float ty | TyBool : bool ty | TyAny : 'a ty
+
+let rec tyExpr : type a. (_, a) tag_expr -> a ty = function
+  | Const _ -> TyFloat
+  | Zero _ -> TyAny
+  | One _ -> TyAny
+  | Var _ -> TyAny
+  | Equal _ -> TyBool
+  | Not _ -> TyBool
+  | And _ -> TyBool
+  | Or _ -> TyBool
+  | Less _ -> TyBool
+  | Mul (_, _, b) -> tyExpr b
+  | Add (_, _, b) -> tyExpr b
+  | Sub (_, _, b) -> tyExpr b
+  | Div (_, _, b) -> tyExpr b
+  | Max (_, _, b) -> tyExpr b
+  | Min (_, _, b) -> tyExpr b
+  | Sin (_, a) -> tyExpr a
+  | Cos (_, a) -> tyExpr a
+  | Ln (_, a) -> tyExpr a
+  | E (_, a) -> tyExpr a
+  | Sqrt (_, a) -> tyExpr a
+  | Cond (_, _, _, b) -> tyExpr b
+
+type 'tag any = Any : ('tag, 'a) tag_expr -> 'tag any
 
 let rec unsafe_cast : type a b. ('tag, a) tag_expr -> ('tag, b) tag_expr =
  fun x ->
@@ -96,6 +104,18 @@ let rec unsafe_cast : type a b. ('tag, a) tag_expr -> ('tag, b) tag_expr =
   | Add (tag, a, b) -> Add (tag, unsafe_cast a, unsafe_cast b)
   | Sin (tag, a) -> Sin (tag, unsafe_cast a)
   | _ -> failwith "TODO"
+
+let cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr option =
+ fun expr witness ->
+  let single_typ = tyExpr expr in
+  match (single_typ, witness) with
+  | TyFloat, TyFloat -> Some expr
+  | TyBool, TyBool -> Some expr
+  | _, _ -> None
+
+let majic_cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr =
+ fun expr witness ->
+  match cast expr witness with Some a -> a | None -> failwith "casting fail"
 
 let rec fold_cps :
     type a.
@@ -271,3 +291,4 @@ let zero_tag tag = Zero tag
 let one_tag tag = One tag
 let var_tag tag id = Var (tag, id)
 let const_tag tag v = Const (tag, v)
+let not_tag tag v = Not (tag, v)
