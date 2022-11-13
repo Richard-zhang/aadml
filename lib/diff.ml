@@ -167,23 +167,21 @@ let eval_tag_unary =
 *)
 
 let eval_tag_nullary env =
-  let nop : type a. a expr -> (float, 'b) tag_expr =
+  let nop : type a. a expr -> float any =
    fun exp ->
     match exp with
-    | Zero _ -> zero_tag 0.0
-    | One _ -> one_tag 1.0
-    | Const (_, a) -> const_tag a a
-    | Var (_, id) -> var_tag (lookup id env) id
+    | Zero _ -> Any (zero_tag 0.0)
+    | One _ -> Any (one_tag 1.0)
+    | Const (_, a) -> Any (const_tag a a)
+    | Var (_, id) -> Any (var_tag (lookup id env) id)
     | _ -> failwith nullary_warning
   in
   { nop }
 
-let eval_tag_ternary : (_, float) ternary = failwith "TODO"
+let eval_tag_ternary : (_, float any) ternary = failwith "TODO"
 
-(* this is impossible because we have bool expr *)
-(* have to use existential type *)
 let eval_tag env x =
-  fold_cps eval_tag_ternary eval_tag_bianry eval_tag_unary
+  fold_cps eval_tag_ternary (failwith "TODO") eval_tag_unary
     (eval_tag_nullary env) x Base.Fn.id
 
 (* fold over the tree that returns a function *)
@@ -198,19 +196,34 @@ let eval_tag env x =
   v = l * r => df/dl = df/dv * r
   v = l/r => df/dl = df/dv * 1/r | df/dr = -1 * df/dv * l * (1 /. r^2)
 *)
-let backprop_binary v fdl fdr v_derv =
-  match v with
-  | Add _ -> add_tag v_derv (fdl v_derv) (fdr v_derv)
-  | Sub _ -> add_tag v_derv (fdl v_derv) (fdr (Float.neg v_derv))
-  | Mul (_, l, r) ->
-      mul_tag v_derv (fdl (v_derv *. get_tag r)) (fdr (v_derv *. get_tag l))
-  | Div (_, l, r) ->
-      let l_v = get_tag l in
-      let r_v = get_tag r in
-      let dvdl = 1.0 /. r_v in
-      let dvdr = Float.neg (l_v /. (r_v *. r_v)) in
-      div_tag v_derv (fdl (v_derv *. dvdl)) (fdr (v_derv *. dvdr))
-  | _ -> failwith binary_warning
+
+(**
+1. top level traverl is implemented as a fold over function
+2. the traversal start with dervivative = 1.0
+3. the propogate the change accordingly
+*)
+
+type b_rs = float -> float any
+
+let backprop_binary =
+  let bop : type a. (_, a) tag_expr -> b_rs -> b_rs -> b_rs =
+   fun v fdl fdr v_derv ->
+    match v with
+    | Add _ -> add_any_tag v_derv (fdl v_derv) (fdr v_derv)
+    | Sub _ -> add_any_tag v_derv (fdl v_derv) (fdr (Float.neg v_derv))
+    | Mul (_, l, r) ->
+        mul_any_tag v_derv
+          (fdl (v_derv *. get_tag r))
+          (fdr (v_derv *. get_tag l))
+    | Div (_, l, r) ->
+        let l_v = get_tag l in
+        let r_v = get_tag r in
+        let dvdl = 1.0 /. r_v in
+        let dvdr = Float.neg (l_v /. (r_v *. r_v)) in
+        div_any_tag v_derv (fdl (v_derv *. dvdl)) (fdr (v_derv *. dvdr))
+    | _ -> failwith binary_warning
+  in
+  { bop }
 
 (**
   v = sin x => df/dx = df/dv * dv/dx = cos x * df/dv
@@ -219,43 +232,66 @@ let backprop_binary v fdl fdr v_derv =
   v = e ^ x => df/dx = df/dv * dv/dx = e ^ x * df/dv
   v = sqrt (x) => df/dx = df/dv * dv/dx = df/dv * -0.5 / v
 *)
-let backprop_unary v fd v_derv =
-  match v with
-  | Sin (_, x) -> sin_tag v_derv (fd (Float.cos (get_tag x) *. v_derv))
-  | Cos (_, x) ->
-      cos_tag v_derv (fd (Float.neg (Float.sin (get_tag x) *. v_derv)))
-  | Ln (_, x) -> ln_tag v_derv (fd (v_derv /. get_tag x))
-  | E (t, _) -> e_tag v_derv (fd (v_derv *. t))
-  | Sqrt (t, _) -> sqrt_tag v_derv (fd (v_derv *. 0.5 /. t))
-  | _ -> failwith unary_warning
+let backprop_unary =
+  let uop : type a. (_, a) tag_expr -> b_rs -> b_rs =
+   fun v fd v_derv ->
+    match v with
+    | Sin (_, x) -> sin_any_tag v_derv (fd (Float.cos (get_tag x) *. v_derv))
+    | Cos (_, x) ->
+        cos_any_tag v_derv (fd (Float.neg (Float.sin (get_tag x) *. v_derv)))
+    | Ln (_, x) -> ln_any_tag v_derv (fd (v_derv /. get_tag x))
+    | E (t, _) -> e_any_tag v_derv (fd (v_derv *. t))
+    | Sqrt (t, _) -> sqrt_any_tag v_derv (fd (v_derv *. 0.5 /. t))
+    | _ -> failwith unary_warning
+  in
+  { uop }
 
 (**
- df/dx = df/dv * dv/dx 
+ v = x => df/dx = df/dv * dv/dx 
 *)
-let backprop_nullary v v_derv =
-  match v with
-  | Zero _ -> zero_tag 0.0
-  | One _ -> one_tag 0.0
-  | Const (_, v) -> const_tag 0.0 v
-  | Var (_, x) -> var_tag v_derv x
-  | _ -> failwith nullary_warning
+let backprop_nullary =
+  let nop : type a. (_, a) tag_expr -> b_rs =
+   fun v v_derv ->
+    match v with
+    | Zero _ -> zero_any_tag 0.0
+    | One _ -> one_any_tag 0.0
+    | Const (_, v) -> const_any_tag 0.0 v
+    | Var (_, x) -> var_any_tag v_derv x
+    | _ -> failwith nullary_warning
+  in
+  { nop }
+
+let backprop_ternary : ('tag, b_rs) ternary = failwith "TODO"
 
 let backprop x =
-  (fold_cps backprop_binary backprop_unary backprop_nullary x Base.Fn.id) 1.0
+  (fold_cps backprop_ternary backprop_binary backprop_unary backprop_nullary x
+     Base.Fn.id)
+    1.0
 
 let collect_result x =
-  let collect_result_nullary x =
-    match x with Var (tag, id) -> empty |> update id tag | _ -> empty
+  let collect_result_ternary : (_, float env) ternary = failwith "TODO" in
+  let collect_result_nullary : (_, float env) nullary =
+    let nop x =
+      match x with Var (tag, id) -> empty |> update id tag | _ -> empty
+    in
+    { nop }
   in
-  let collect_result_unary _ x = x in
-  let collect_result_binary _ l r =
-    IntMap.union (fun _ a b -> Some (a +. b)) l r
+  let collect_result_unary : (_, float env) unary =
+    let uop _ env = env in
+    { uop }
   in
-  fold_cps collect_result_binary collect_result_unary collect_result_nullary x
-    Base.Fn.id
+  let collect_result_binary : (_, float env) binary =
+    let bop _ l r = IntMap.union (fun _ a b -> Some (a +. b)) l r in
+    { bop }
+  in
+  fold_cps collect_result_ternary collect_result_binary collect_result_unary
+    collect_result_nullary x Base.Fn.id
 
 let backward_all_diff env formula =
-  eval_tag env formula |> backprop |> collect_result
+  let intermediate_result = eval_tag env formula in
+  let backprop_result = spread intermediate_result { run = backprop } in
+  let result = spread backprop_result { run = collect_result } in
+  result
 
 let backward_diff env id x =
   x |> backward_all_diff env |> IntMap.find_opt id |> Option.value ~default:0.0
@@ -278,7 +314,9 @@ let%test_unit "test evaluators gives back the same result" =
   let formula = Example.test_formula () in
   let env = empty |> update 0 1.0 |> update 1 1.0 in
   test_formula_result
-    [ Base.Fn.compose get_tag (eval_tag env); eval env ]
+    [
+      (fun formula -> spread (eval_tag env formula) { run = get_tag }); eval env;
+    ]
     formula
 
 let test_can_derv formula =

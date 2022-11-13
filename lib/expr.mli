@@ -73,7 +73,9 @@ val fold_cps :
 type 'a expr = (unit, 'a) tag_expr
 type 'tag any = Any : ('tag, 'a) tag_expr -> 'tag any
 type _ ty = TyFloat : float ty | TyBool : bool ty | TyAny : 'a ty
+type ('tag, 'a) cont = { run : 'elt. ('tag, 'elt) tag_expr -> 'a }
 
+val spread : 'tag any -> ('tag, 'a) cont -> 'a
 val tyExpr : ('tag, 'a) tag_expr -> 'a ty
 val unsafe_cast : ('tag, 'a) tag_expr -> ('tag, 'b) tag_expr
 val cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr option
@@ -121,3 +123,17 @@ val eval : float env -> float expr -> float
 (** naive evaluation implemented via tree traversal *)
 
 val string_of_op : show:('a -> string) -> 'a expr -> string
+val add_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
+val mul_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
+val sub_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
+val div_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
+val cos_any_tag : 'tag -> 'tag any -> 'tag any
+val sin_any_tag : 'tag -> 'tag any -> 'tag any
+val e_any_tag : 'tag -> 'tag any -> 'tag any
+val ln_any_tag : 'tag -> 'tag any -> 'tag any
+val sqrt_any_tag : 'tag -> 'tag any -> 'tag any
+val zero_any_tag : 'tag -> 'tag any
+val one_any_tag : 'tag -> 'tag any
+val var_any_tag : 'tag -> int -> 'tag any
+val const_any_tag : 'tag -> float -> 'tag any
+val not_any_tag : 'tag -> 'tag any -> 'tag any

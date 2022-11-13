@@ -94,6 +94,9 @@ let rec tyExpr : type a. (_, a) tag_expr -> a ty = function
   | Cond (_, _, _, b) -> tyExpr b
 
 type 'tag any = Any : ('tag, 'a) tag_expr -> 'tag any
+type ('tag, 'a) cont = { run : 'elt. ('tag, 'elt) tag_expr -> 'a }
+
+let spread (Any a) op = op.run a
 
 let rec unsafe_cast : type a b. ('tag, a) tag_expr -> ('tag, b) tag_expr =
  fun x ->
@@ -116,6 +119,9 @@ let cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr option =
 let majic_cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr =
  fun expr witness ->
   match cast expr witness with Some a -> a | None -> failwith "casting fail"
+
+let cast_to_float x = majic_cast x TyFloat
+let cast_to_bool x = majic_cast x TyBool
 
 let rec fold_cps :
     type a.
@@ -292,3 +298,26 @@ let one_tag tag = One tag
 let var_tag tag id = Var (tag, id)
 let const_tag tag v = Const (tag, v)
 let not_tag tag v = Not (tag, v)
+
+let add_any_tag tag (Any left) (Any right) =
+  Any (add_tag tag (cast_to_float left) (cast_to_float right))
+
+let mul_any_tag tag (Any left) (Any right) =
+  Any (mul_tag tag (cast_to_float left) (cast_to_float right))
+
+let sub_any_tag tag (Any left) (Any right) =
+  Any (sub_tag tag (cast_to_float left) (cast_to_float right))
+
+let div_any_tag tag (Any left) (Any right) =
+  Any (div_tag tag (cast_to_float left) (cast_to_float right))
+
+let cos_any_tag tag (Any v) = Any (cos_tag tag (cast_to_float v))
+let sin_any_tag tag (Any v) = Any (sin_tag tag (cast_to_float v))
+let ln_any_tag tag (Any v) = Any (ln_tag tag (cast_to_float v))
+let e_any_tag tag (Any v) = Any (e_tag tag (cast_to_float v))
+let sqrt_any_tag tag (Any v) = Any (sqrt_tag tag (cast_to_float v))
+let zero_any_tag tag = Any (zero_tag tag)
+let one_any_tag tag = Any (one_tag tag)
+let var_any_tag tag id = Any (var_tag tag id)
+let const_any_tag tag v = Any (const_tag tag v)
+let not_any_tag tag (Any v) = Any (not_tag tag (cast_to_bool v))
