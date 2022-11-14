@@ -9,31 +9,31 @@ val lookup : int -> 'a env -> 'a
 type ('tag, _) tag_expr =
   | Const : 'tag * float -> ('tag, float) tag_expr
   | Mul :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Add :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Sub :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Div :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
-  | Sin : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Cos : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Ln : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | E : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Sqrt : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Zero : 'tag -> ('tag, 'a) tag_expr
-  | One : 'tag -> ('tag, 'a) tag_expr
-  | Var : 'tag * int -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
+  | Sin : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Cos : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Ln : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | E : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Sqrt : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Zero : 'tag -> ('tag, float) tag_expr
+  | One : 'tag -> ('tag, float) tag_expr
+  | Var : 'tag * int -> ('tag, float) tag_expr
   | Max :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Min :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Not : 'tag * ('tag, bool) tag_expr -> ('tag, bool) tag_expr
   | And :
       'tag * ('tag, bool) tag_expr * ('tag, bool) tag_expr
@@ -72,56 +72,69 @@ val fold_cps :
 
 type 'a expr = (unit, 'a) tag_expr
 type 'tag any = Any : ('tag, 'a) tag_expr -> 'tag any
-type _ ty = TyFloat : float ty | TyBool : bool ty | TyAny : 'a ty
+type _ ty = TyFloat : float ty | TyBool : bool ty
 type ('tag, 'a) cont = { run : 'elt. ('tag, 'elt) tag_expr -> 'a }
 
 val spread : 'tag any -> ('tag, 'a) cont -> 'a
 val tyExpr : ('tag, 'a) tag_expr -> 'a ty
 val cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr option
 val majic_cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr
-val add : 'a expr -> 'a expr -> 'a expr
-val mul : 'a expr -> 'a expr -> 'a expr
-val sub : 'a expr -> 'a expr -> 'a expr
-val div : 'a expr -> 'a expr -> 'a expr
-val cos : 'a expr -> 'a expr
-val sin : 'a expr -> 'a expr
-val e : 'a expr -> 'a expr
-val ln : 'a expr -> 'a expr
-val sqrt : 'a expr -> 'a expr
-val zero : 'a expr
-val one : 'a expr
-val var : int -> 'a expr
+val cast_to_float : ('tag, 'a) tag_expr -> ('tag, float) tag_expr
+val cast_to_bool : ('tag, 'a) tag_expr -> ('tag, bool) tag_expr
+val add : float expr -> float expr -> float expr
+val mul : float expr -> float expr -> float expr
+val sub : float expr -> float expr -> float expr
+val div : float expr -> float expr -> float expr
+val cos : float expr -> float expr
+val sin : float expr -> float expr
+val e : float expr -> float expr
+val ln : float expr -> float expr
+val sqrt : float expr -> float expr
+val zero : float expr
+val one : float expr
+val var : int -> float expr
 val const : float -> float expr
-val neg : 'a expr -> 'a expr
-val power : int -> 'a expr -> 'a expr
+val neg : float expr -> float expr
+val power : int -> float expr -> float expr
 
 val add_tag :
-  'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  'tag ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr
 
 val mul_tag :
-  'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  'tag ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr
 
 val sub_tag :
-  'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  'tag ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr
 
 val div_tag :
-  'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
+  'tag ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr
 
-val cos_tag : 'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-val sin_tag : 'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-val e_tag : 'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-val ln_tag : 'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-val sqrt_tag : 'tag -> ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-val zero_tag : 'tag -> ('tag, 'a) tag_expr
-val one_tag : 'tag -> ('tag, 'a) tag_expr
-val var_tag : 'tag -> int -> ('tag, 'a) tag_expr
+val cos_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
+val sin_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
+val e_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
+val ln_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
+val sqrt_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
+val zero_tag : 'tag -> ('tag, float) tag_expr
+val one_tag : 'tag -> ('tag, float) tag_expr
+val var_tag : 'tag -> int -> ('tag, float) tag_expr
 val const_tag : 'tag -> float -> ('tag, float) tag_expr
 val not_tag : 'tag -> ('tag, bool) tag_expr -> ('tag, bool) tag_expr
 
 val eval : float env -> float expr -> float
 (** naive evaluation implemented via tree traversal *)
 
-val string_of_op : show:('a -> string) -> 'a expr -> string
 val add_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
 val mul_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
 val sub_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
@@ -136,3 +149,4 @@ val one_any_tag : 'tag -> 'tag any
 val var_any_tag : 'tag -> int -> 'tag any
 val const_any_tag : 'tag -> float -> 'tag any
 val not_any_tag : 'tag -> 'tag any -> 'tag any
+val string_of_op : show:('a -> string) -> 'a expr -> string

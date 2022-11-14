@@ -17,31 +17,31 @@ let lookup key = IntMap.find key
 type ('tag, _) tag_expr =
   | Const : 'tag * float -> ('tag, float) tag_expr
   | Mul :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Add :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Sub :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Div :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
-  | Sin : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Cos : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Ln : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | E : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Sqrt : 'tag * ('tag, 'a) tag_expr -> ('tag, 'a) tag_expr
-  | Zero : 'tag -> ('tag, 'a) tag_expr
-  | One : 'tag -> ('tag, 'a) tag_expr
-  | Var : 'tag * int -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
+  | Sin : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Cos : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Ln : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | E : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Sqrt : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Zero : 'tag -> ('tag, float) tag_expr
+  | One : 'tag -> ('tag, float) tag_expr
+  | Var : 'tag * int -> ('tag, float) tag_expr
   | Max :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Min :
-      'tag * ('tag, 'a) tag_expr * ('tag, 'a) tag_expr
-      -> ('tag, 'a) tag_expr
+      'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
+      -> ('tag, float) tag_expr
   | Not : 'tag * ('tag, bool) tag_expr -> ('tag, bool) tag_expr
   | And :
       'tag * ('tag, bool) tag_expr * ('tag, bool) tag_expr
@@ -68,13 +68,13 @@ type ('tag, 'a) ternary = {
 }
 
 type 'a expr = (unit, 'a) tag_expr
-type _ ty = TyFloat : float ty | TyBool : bool ty | TyAny : 'a ty
+type _ ty = TyFloat : float ty | TyBool : bool ty
 
 let rec tyExpr : type a. (_, a) tag_expr -> a ty = function
   | Const _ -> TyFloat
-  | Zero _ -> TyAny
-  | One _ -> TyAny
-  | Var _ -> TyAny
+  | Zero _ -> TyFloat
+  | One _ -> TyFloat
+  | Var _ -> TyFloat
   | Equal _ -> TyBool
   | Not _ -> TyBool
   | And _ -> TyBool
@@ -179,10 +179,6 @@ let neg a = sub zero a
 
 let power time n =
   if time == 0 then one else Base.Fn.apply_n_times ~n:(time - 1) (mul n) n
-
-module Eq = struct
-  type (_, _) t = Refl : ('a, 'a) t
-end
 
 let eval_nullary env =
   let nop : type a. (_, a) tag_expr -> _ = function

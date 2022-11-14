@@ -17,7 +17,7 @@ let diff_nullary id =
 
 (* v=f(u(x)) where f is the primitive operation => dv/dx = df/du * du/dx *)
 let diff_unary =
-  let uop : type a b. a expr -> unit any -> unit any =
+  let uop : type a b. (_, a) tag_expr -> unit any -> unit any =
    fun exp dudx ->
     let diff_unary_help = function
       | Sin (_, a) -> cos a
@@ -27,7 +27,7 @@ let diff_unary =
       | Sqrt (_, a) -> div one (mul (add one one) (sqrt a))
       | _ -> failwith unary_warning
     in
-    mul_any_tag () (Any (diff_unary_help exp)) dudx
+    mul_any_tag () (Any (exp |> cast_to_float |> diff_unary_help)) dudx
   in
   { uop }
 
@@ -56,7 +56,7 @@ let diff id x =
   let any_formula =
     fold_cps diff_ternary diff_binary diff_unary (diff_nullary id) x Base.Fn.id
   in
-  spread any_formula { run = (fun tag_expr -> majic_cast tag_expr TyFloat) }
+  spread any_formula { run = cast_to_float }
 
 let symbolic_diff env id formula =
   let diff_formula = diff id formula in
@@ -148,12 +148,12 @@ let eval_tag_unary =
    fun exp (Any value) ->
     let tag = get_tag value in
     match exp with
-    | Not _ -> Any (not_tag (Float.neg tag) (majic_cast value TyBool))
-    | Sin _ -> Any (sin_tag (Float.sin tag) value)
-    | Cos _ -> Any (cos_tag (Float.cos tag) value)
-    | Ln _ -> Any (ln_tag (Float.log tag) value)
-    | E _ -> Any (e_tag (Float.exp tag) value)
-    | Sqrt _ -> Any (sqrt_tag (Float.sqrt tag) value)
+    | Not _ -> Any (not_tag (Float.neg tag) (cast_to_bool value))
+    | Sin _ -> Any (sin_tag (Float.sin tag) (cast_to_float value))
+    | Cos _ -> Any (cos_tag (Float.cos tag) (cast_to_float value))
+    | Ln _ -> Any (ln_tag (Float.log tag) (cast_to_float value))
+    | E _ -> Any (e_tag (Float.exp tag) (cast_to_float value))
+    | Sqrt _ -> Any (sqrt_tag (Float.sqrt tag) (cast_to_float value))
     | _ -> failwith unary_warning
   in
   { uop }
@@ -273,7 +273,8 @@ let backprop x =
 let collect_result x =
   let collect_result_ternary : (_, float env) ternary = failwith "TODO" in
   let collect_result_nullary : (_, float env) nullary =
-    let nop x =
+    let nop : type a. ('tag, a) tag_expr -> float env =
+     fun x ->
       match x with Var (tag, id) -> empty |> update id tag | _ -> empty
     in
     { nop }
