@@ -98,16 +98,6 @@ type ('tag, 'a) cont = { run : 'elt. ('tag, 'elt) tag_expr -> 'a }
 
 let spread (Any a) op = op.run a
 
-let rec unsafe_cast : type a b. ('tag, a) tag_expr -> ('tag, b) tag_expr =
- fun x ->
-  match x with
-  | Zero tag -> Zero tag
-  | Const (_, _) -> failwith "TODO"
-  | Var (tag, id) -> Var (tag, id)
-  | Add (tag, a, b) -> Add (tag, unsafe_cast a, unsafe_cast b)
-  | Sin (tag, a) -> Sin (tag, unsafe_cast a)
-  | _ -> failwith "TODO"
-
 let cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr option =
  fun expr witness ->
   let single_typ = tyExpr expr in

@@ -3,26 +3,22 @@
 open Expr
 open Util
 
-let diff_ternary =
-  let top : type a. (_, a) tag_expr -> _ -> _ -> _ -> _ = function
-    | Cond _ -> failwith "TODO"
-    | _ -> failwith ternary_warning
-  in
-  { top }
+let diff_ternary : (_, 'a) ternary = failwith "TODO"
 
 let diff_nullary id =
-  let nop : type a. (_, a) tag_expr -> _ = function
-    | Var (_, x) -> if id = x then one else zero
-    | Zero _ -> zero
-    | One _ -> zero
-    | Const _ -> zero
+  let nop : type a. (_, a) tag_expr -> unit any = function
+    | Var (_, x) -> if id = x then one_any_tag () else zero_any_tag ()
+    | Zero _ -> zero_any_tag ()
+    | One _ -> zero_any_tag ()
+    | Const _ -> zero_any_tag ()
     | _ -> failwith nullary_warning
   in
   { nop }
 
+(* v=f(u(x)) where f is the primitive operation => dv/dx = df/du * du/dx *)
 let diff_unary =
-  let uop : type a b. a expr -> b expr -> b expr =
-   fun exp bexp ->
+  let uop : type a b. a expr -> unit any -> unit any =
+   fun exp dudx ->
     let diff_unary_help = function
       | Sin (_, a) -> cos a
       | Cos (_, a) -> sub zero (sin a)
@@ -31,30 +27,36 @@ let diff_unary =
       | Sqrt (_, a) -> div one (mul (add one one) (sqrt a))
       | _ -> failwith unary_warning
     in
-    mul (unsafe_cast (diff_unary_help exp)) bexp
+    mul_any_tag () (Any (diff_unary_help exp)) dudx
   in
   { uop }
 
+(* v = l(x) `op` r(x) => dv/dx = ... *)
 let diff_binary =
-  let bop : type a b. a expr -> b expr -> b expr -> b expr =
+  let bop : type a b. a expr -> unit any -> unit any -> unit any =
    fun x a_dot b_dot ->
     match x with
-    | Add _ -> add a_dot b_dot
-    | Sub _ -> sub a_dot b_dot
+    | Add _ -> add_any_tag () a_dot b_dot
+    | Sub _ -> sub_any_tag () a_dot b_dot
     | Mul (_, a, b) ->
-        add (mul a_dot (unsafe_cast b)) (mul (unsafe_cast a) b_dot)
+        add_any_tag ()
+          (mul_any_tag () a_dot (Any b))
+          (mul_any_tag () (Any a) b_dot)
     | Div (_, a, b) ->
-        let cast_b = unsafe_cast b in
-        let cast_a = unsafe_cast a in
-        let u'v = mul a_dot cast_b in
-        let uv' = mul cast_a b_dot in
-        div (sub u'v uv') (mul cast_b cast_b)
+        let cast_b = Any b in
+        let cast_a = Any a in
+        let u'v = mul_any_tag () a_dot cast_b in
+        let uv' = mul_any_tag () cast_a b_dot in
+        div_any_tag () (sub_any_tag () u'v uv') (mul_any_tag () cast_b cast_b)
     | _ -> failwith binary_warning
   in
   { bop }
 
 let diff id x =
-  fold_cps diff_ternary diff_binary diff_unary (diff_nullary id) x Base.Fn.id
+  let any_formula =
+    fold_cps diff_ternary diff_binary diff_unary (diff_nullary id) x Base.Fn.id
+  in
+  spread any_formula { run = (fun tag_expr -> majic_cast tag_expr TyFloat) }
 
 let symbolic_diff env id formula =
   let diff_formula = diff id formula in

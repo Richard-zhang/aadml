@@ -1,4 +1,4 @@
-val diff : int -> 'a Expr.expr -> 'a Expr.expr
+val diff : int -> float Expr.expr -> float Expr.expr
 (** symbolic differentation *)
 
 val symbolic_diff : float Expr.env -> int -> float Expr.expr -> float
