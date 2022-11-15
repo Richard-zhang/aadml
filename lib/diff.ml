@@ -8,8 +8,6 @@ let diff_ternary : (_, 'a) ternary = dummy_ternary ()
 let diff_nullary id =
   let nop : type a. (_, a) tag_expr -> unit any = function
     | Var (_, x) -> if id = x then one_any_tag () else zero_any_tag ()
-    | Zero _ -> zero_any_tag ()
-    | One _ -> zero_any_tag ()
     | Const _ -> zero_any_tag ()
     | _ -> failwith nullary_warning
   in
@@ -68,8 +66,6 @@ let combine_eval_diff_nullary env id =
   let nop : type a. (_, a) tag_expr -> _ =
    fun op ->
     match op with
-    | Zero _ -> (0.0, 0.0)
-    | One _ -> (1.0, 0.0)
     | Const (_, a) -> (a, 0.0)
     | Var (_, x) -> (lookup x env, if id = x then 1.0 else 0.0)
     | _ -> failwith nullary_warning
@@ -167,8 +163,6 @@ let eval_tag_nullary env =
   let nop : type a. a expr -> float any =
    fun exp ->
     match exp with
-    | Zero _ -> Any (zero_tag 0.0)
-    | One _ -> Any (one_tag 1.0)
     | Const (_, a) -> Any (const_tag a a)
     | Var (_, id) -> Any (var_tag (lookup id env) id)
     | _ -> failwith nullary_warning
@@ -250,8 +244,6 @@ let backprop_nullary =
   let nop : type a. (_, a) tag_expr -> b_rs =
    fun v v_derv ->
     match v with
-    | Zero _ -> zero_any_tag 0.0
-    | One _ -> one_any_tag 0.0
     | Const (_, v) -> const_any_tag 0.0 v
     | Var (_, x) -> var_any_tag v_derv x
     | _ -> failwith nullary_warning

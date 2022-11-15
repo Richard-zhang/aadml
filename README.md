@@ -89,9 +89,10 @@
 
 ## Next Step
 
-* Simplifying the description true to be of
+- [x] Simplifying the description true to be of
   * type bool - support logical operation
   * type float - support floating point operation
-
+- [x] remove one/zero
+- [ ] add errf as an operator
 * think about how recursion-scheme can come into plays
 * Add more constraints on GADTs

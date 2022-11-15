@@ -25,8 +25,6 @@ type ('tag, _) tag_expr =
   | Ln : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | E : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | Sqrt : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
-  | Zero : 'tag -> ('tag, float) tag_expr
-  | One : 'tag -> ('tag, float) tag_expr
   | Var : 'tag * int -> ('tag, float) tag_expr
   | Max :
       'tag * ('tag, float) tag_expr * ('tag, float) tag_expr

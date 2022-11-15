@@ -54,8 +54,6 @@ let label_nullary =
   let nop : type a. (_, a) tag_expr -> label_rs =
    fun exp label ->
     match exp with
-    | Zero _ -> (label, zero_any_tag (get_node float_show exp label))
-    | One _ -> (label, one_any_tag (get_node float_show exp label))
     | Const (_, a) -> (label, const_any_tag (get_node float_show exp label) a)
     | Var (_, id) -> (label, var_any_tag (get_node float_show exp label) id)
     | _ -> failwith nullary_warning
@@ -121,8 +119,6 @@ let dot_nullary (name_env : string env) =
   let nop : type a. (node, a) tag_expr -> stmt list =
    fun exp ->
     match exp with
-    | Zero tag -> [ stmt_of_node tag ]
-    | One tag -> [ stmt_of_node tag ]
     | Const (tag, _) -> [ stmt_of_node tag ]
     | Var (tag, _) -> [ stmt_of_node ~name_env tag ]
     | _ -> failwith nullary_warning

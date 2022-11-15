@@ -33,8 +33,6 @@ type ('tag, _) tag_expr =
   | Ln : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | E : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | Sqrt : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
-  | Zero : 'tag -> ('tag, float) tag_expr
-  | One : 'tag -> ('tag, float) tag_expr
   | Var : 'tag * int -> ('tag, float) tag_expr
   | Max :
       'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
@@ -76,8 +74,6 @@ type _ ty = TyFloat : float ty | TyBool : bool ty
 
 let rec tyExpr : type a. (_, a) tag_expr -> a ty = function
   | Const _ -> TyFloat
-  | Zero _ -> TyFloat
-  | One _ -> TyFloat
   | Var _ -> TyFloat
   | Equal _ -> TyBool
   | Not _ -> TyBool
@@ -155,8 +151,6 @@ let rec fold_cps :
   | Ln (_, a) -> unary_apply a x
   | E (_, a) -> unary_apply a x
   | Sqrt (_, a) -> unary_apply a x
-  | Zero _ -> nullary_apply x
-  | One _ -> nullary_apply x
   | Const _ -> nullary_apply x
   | Var _ -> nullary_apply x
   | Not (_, a) -> unary_apply a x
@@ -175,10 +169,10 @@ let sin a = Sin ((), a)
 let e a = E ((), a)
 let ln a = Ln ((), a)
 let sqrt a = Sqrt ((), a)
-let zero = Zero ()
-let one = One ()
 let var id = Var ((), id)
 let const a = Const ((), a)
+let zero = const 0.0 
+let one = const 1.0
 let neg a = sub zero a
 
 let power time n =
@@ -186,8 +180,6 @@ let power time n =
 
 let eval_nullary env =
   let nop : type a. (_, a) tag_expr -> _ = function
-    | Zero _ -> 0.0
-    | One _ -> 1.0
     | Const (_, a) -> a
     | Var (_, id) -> lookup id env
     | _ -> failwith nullary_warning
@@ -238,8 +230,6 @@ let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   | Ln _ -> "ln"
   | E _ -> "e"
   | Sqrt _ -> "sqrt"
-  | Zero _ -> "0"
-  | One _ -> "1"
   | Const (_, a) -> show a
   | Var (_, id) -> string_of_int id
   | Max _ -> "max"
@@ -262,8 +252,6 @@ let get_tag : type a. (_, a) tag_expr -> _ = function
   | Ln (tag, _) -> tag
   | E (tag, _) -> tag
   | Sqrt (tag, _) -> tag
-  | Zero tag -> tag
-  | One tag -> tag
   | Var (tag, _) -> tag
   | Max (tag, _, _) -> tag
   | Min (tag, _, _) -> tag
@@ -283,10 +271,10 @@ let sin_tag tag a = Sin (tag, a)
 let e_tag tag a = E (tag, a)
 let ln_tag tag a = Ln (tag, a)
 let sqrt_tag tag v = Sqrt (tag, v)
-let zero_tag tag = Zero tag
-let one_tag tag = One tag
 let var_tag tag id = Var (tag, id)
 let const_tag tag v = Const (tag, v)
+let zero_tag tag = const_tag tag 0.0
+let one_tag tag = const_tag tag 1.0
 let not_tag tag v = Not (tag, v)
 
 let add_any_tag tag (Any left) (Any right) =
