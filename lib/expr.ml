@@ -106,12 +106,12 @@ let cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr option =
   | TyBool, TyBool -> Some expr
   | _, _ -> None
 
-let majic_cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr =
+let magic_cast : type a b. ('tag, a) tag_expr -> b ty -> ('tag, b) tag_expr =
  fun expr witness ->
   match cast expr witness with Some a -> a | None -> failwith "casting fail"
 
-let cast_to_float x = majic_cast x TyFloat
-let cast_to_bool x = majic_cast x TyBool
+let cast_to_float x = magic_cast x TyFloat
+let cast_to_bool x = magic_cast x TyBool
 
 let rec fold_cps :
     type a.
@@ -171,7 +171,7 @@ let ln a = Ln ((), a)
 let sqrt a = Sqrt ((), a)
 let var id = Var ((), id)
 let const a = Const ((), a)
-let zero = const 0.0 
+let zero = const 0.0
 let one = const 1.0
 let neg a = sub zero a
 

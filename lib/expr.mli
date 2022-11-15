@@ -77,7 +77,7 @@ type ('tag, 'a) cont = { run : 'elt. ('tag, 'elt) tag_expr -> 'a }
 val spread : 'tag any -> ('tag, 'a) cont -> 'a
 val tyExpr : ('tag, 'a) tag_expr -> 'a ty
 val cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr option
-val majic_cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr
+val magic_cast : ('tag, 'a) tag_expr -> 'b ty -> ('tag, 'b) tag_expr
 val cast_to_float : ('tag, 'a) tag_expr -> ('tag, float) tag_expr
 val cast_to_bool : ('tag, 'a) tag_expr -> ('tag, bool) tag_expr
 val add : float expr -> float expr -> float expr
