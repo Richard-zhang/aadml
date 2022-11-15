@@ -3,7 +3,7 @@
 open Expr
 open Util
 
-let diff_ternary : (_, 'a) ternary = failwith "TODO"
+let diff_ternary : (_, 'a) ternary = dummy_ternary ()
 
 let diff_nullary id =
   let nop : type a. (_, a) tag_expr -> unit any = function
@@ -71,7 +71,7 @@ let combine_eval_diff_nullary env id =
     | Zero _ -> (0.0, 0.0)
     | One _ -> (1.0, 0.0)
     | Const (_, a) -> (a, 0.0)
-    | Var (_, x) -> (lookup id env, if id = x then 1.0 else 0.0)
+    | Var (_, x) -> (lookup x env, if id = x then 1.0 else 0.0)
     | _ -> failwith nullary_warning
   in
   { nop }
@@ -94,6 +94,7 @@ let combine_eval_diff_unary : (_, float * float) unary =
   in
   { uop }
 
+(* v = left `op` right => dv/dx = *)
 let combine_eval_diff_binary =
   let bop : type a. (_, a) tag_expr -> _ -> _ -> _ =
    fun op ->
@@ -114,7 +115,7 @@ let combine_eval_diff_binary =
   in
   { bop }
 
-let combine_eval_diff_ternary : (_, float * float) ternary = failwith "TODO"
+let combine_eval_diff_ternary : (_, float * float) ternary = dummy_ternary ()
 
 (*
   forword diff calculate forward and diff at the same time 
@@ -132,15 +133,19 @@ backward diff is two pass
 *)
 
 (* is there a way work around with this problem *)
-let eval_tag_bianry (exp : 'a expr) left right =
-  let left_tag = get_tag left in
-  let right_tag = get_tag right in
-  match exp with
-  | Add _ -> add_tag (left_tag +. right_tag) left right
-  | Sub _ -> sub_tag (left_tag -. right_tag) left right
-  | Div _ -> div_tag (left_tag /. right_tag) left right
-  | Mul _ -> mul_tag (left_tag *. right_tag) left right
-  | _ -> failwith binary_warning
+let eval_tag_bianry =
+  let bop : type a. a expr -> float any -> float any -> float any =
+   fun exp left right ->
+    let left_tag = spread left { run = get_tag } in
+    let right_tag = spread right { run = get_tag } in
+    match exp with
+    | Add _ -> add_any_tag (left_tag +. right_tag) left right
+    | Sub _ -> sub_any_tag (left_tag -. right_tag) left right
+    | Div _ -> div_any_tag (left_tag /. right_tag) left right
+    | Mul _ -> mul_any_tag (left_tag *. right_tag) left right
+    | _ -> failwith binary_warning
+  in
+  { bop }
 
 (* need a type witness on existentially quantified type *)
 let eval_tag_unary =
@@ -157,16 +162,6 @@ let eval_tag_unary =
     | _ -> failwith unary_warning
   in
   { uop }
-(*
-  let tag = get_tag value in
-  match exp with
-  | Sin _ -> sin_tag (Float.sin tag) value
-  | Cos _ -> cos_tag (Float.cos tag) value
-  | Ln _ -> ln_tag (Float.log tag) value
-  | E _ -> e_tag (Float.exp tag) value
-  | Sqrt _ -> sqrt_tag (Float.sqrt tag) value
-  | _ -> failwith unary_warning
-*)
 
 let eval_tag_nullary env =
   let nop : type a. a expr -> float any =
@@ -180,10 +175,10 @@ let eval_tag_nullary env =
   in
   { nop }
 
-let eval_tag_ternary : (_, float any) ternary = failwith "TODO"
+let eval_tag_ternary : (_, float any) ternary = dummy_ternary ()
 
 let eval_tag env x =
-  fold_cps eval_tag_ternary (failwith "TODO") eval_tag_unary
+  fold_cps eval_tag_ternary eval_tag_bianry eval_tag_unary
     (eval_tag_nullary env) x Base.Fn.id
 
 (* fold over the tree that returns a function *)
@@ -263,7 +258,7 @@ let backprop_nullary =
   in
   { nop }
 
-let backprop_ternary : ('tag, b_rs) ternary = failwith "TODO"
+let backprop_ternary : ('tag, b_rs) ternary = dummy_ternary ()
 
 let backprop x =
   (fold_cps backprop_ternary backprop_binary backprop_unary backprop_nullary x
@@ -271,7 +266,7 @@ let backprop x =
     1.0
 
 let collect_result x =
-  let collect_result_ternary : (_, float env) ternary = failwith "TODO" in
+  let collect_result_ternary : (_, float env) ternary = dummy_ternary () in
   let collect_result_nullary : (_, float env) nullary =
     let nop : type a. ('tag, a) tag_expr -> float env =
      fun x ->

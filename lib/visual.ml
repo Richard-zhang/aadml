@@ -15,8 +15,6 @@ let float_show = Printf.sprintf "%0.2f"
 
 type label_rs = int -> int * node any
 
-let label_ternary : (unit, label_rs) ternary = failwith "TODO"
-
 (* pre order traversal using label *)
 let label_binary =
   let bop : type a. (_, a) tag_expr -> label_rs -> label_rs -> label_rs =
@@ -65,7 +63,7 @@ let label_nullary =
   { nop }
 
 let label x =
-  fold_cps label_ternary label_binary label_unary label_nullary x (fun f ->
+  fold_cps (dummy_ternary ()) label_binary label_unary label_nullary x (fun f ->
       f 1 |> snd)
 
 type stmt = Edge of int * int | Node of int * string
@@ -80,8 +78,6 @@ let stmt_of_node ?(name_env = empty) = function
       | Some name -> Node (id, name)
       | None -> Node (id, Printf.sprintf "x%d" (-1 * id)))
   | Op (id, label) -> Node (id, label)
-
-let dot_ternary : (node, stmt list) ternary = failwith "TODO"
 
 let dot_binary =
   let bop : type a. (node, a) tag_expr -> stmt list -> stmt list -> stmt list =
@@ -134,7 +130,7 @@ let dot_nullary (name_env : string env) =
   { nop }
 
 let stmts_of_label_expr ?(name_env = empty) exp =
-  fold_cps dot_ternary dot_binary dot_unary (dot_nullary name_env) exp
+  fold_cps (dummy_ternary ()) dot_binary dot_unary (dot_nullary name_env) exp
     Base.Fn.id
 
 let graph_of_stmts stmts =

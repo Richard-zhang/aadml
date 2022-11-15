@@ -78,7 +78,7 @@ let%test_unit "bs greek 2" =
     eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
   in
   Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 1 formula) 0.932;
-  (*   Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 3 formula) (-9.579); *)
+  Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 3 formula) 9.579;
   ()
 
 let%test_unit "bs greek 3" =
@@ -86,5 +86,5 @@ let%test_unit "bs greek 3" =
     eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
   in
   Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 1 formula) 0.932;
-  (*   Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 3 formula) (-9.579); *)
+  Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 3 formula) 9.579;
   ()

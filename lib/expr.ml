@@ -67,6 +67,10 @@ type ('tag, 'a) ternary = {
   top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
 }
 
+let dummy_ternary () =
+  let top _ = failwith "TODO" in
+  { top }
+
 type 'a expr = (unit, 'a) tag_expr
 type _ ty = TyFloat : float ty | TyBool : bool ty
 

@@ -59,6 +59,7 @@ type ('tag, 'a) ternary = {
   top : 'elt. ('tag, 'elt) tag_expr -> 'a -> 'a -> 'a -> 'a;
 }
 
+val dummy_ternary : unit -> ('a, 'b) ternary
 val get_tag : ('tag, 'b) tag_expr -> 'tag
 
 val fold_cps :
