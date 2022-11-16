@@ -33,6 +33,7 @@ type ('tag, _) tag_expr =
   | Ln : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | E : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | Sqrt : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Erf : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | Var : 'tag * int -> ('tag, float) tag_expr
   | Max :
       'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
@@ -86,11 +87,12 @@ let rec tyExpr : type a. (_, a) tag_expr -> a ty = function
   | Div (_, _, b) -> tyExpr b
   | Max (_, _, b) -> tyExpr b
   | Min (_, _, b) -> tyExpr b
-  | Sin (_, a) -> tyExpr a
-  | Cos (_, a) -> tyExpr a
-  | Ln (_, a) -> tyExpr a
-  | E (_, a) -> tyExpr a
-  | Sqrt (_, a) -> tyExpr a
+  | Sin _ -> TyFloat
+  | Cos _ -> TyFloat
+  | Ln _ -> TyFloat
+  | E _ -> TyFloat
+  | Sqrt _ -> TyFloat
+  | Erf _ -> TyFloat
   | Cond (_, _, _, b) -> tyExpr b
 
 type 'tag any = Any : ('tag, 'a) tag_expr -> 'tag any
@@ -151,6 +153,7 @@ let rec fold_cps :
   | Ln (_, a) -> unary_apply a x
   | E (_, a) -> unary_apply a x
   | Sqrt (_, a) -> unary_apply a x
+  | Erf (_, a) -> unary_apply a x
   | Const _ -> nullary_apply x
   | Var _ -> nullary_apply x
   | Not (_, a) -> unary_apply a x
@@ -160,19 +163,35 @@ let rec fold_cps :
   | Less (_, a, b) -> binary_apply a b x
   | Cond (_, a, b, c) -> ternary_apply a b c x
 
-let add a b = Add ((), a, b)
-let mul a b = Mul ((), a, b)
-let sub a b = Sub ((), a, b)
-let div a b = Div ((), a, b)
-let cos a = Cos ((), a)
-let sin a = Sin ((), a)
-let e a = E ((), a)
-let ln a = Ln ((), a)
-let sqrt a = Sqrt ((), a)
-let var id = Var ((), id)
-let const a = Const ((), a)
-let zero = const 0.0
-let one = const 1.0
+let add_tag tag a b = Add (tag, a, b)
+let mul_tag tag a b = Mul (tag, a, b)
+let sub_tag tag a b = Sub (tag, a, b)
+let div_tag tag a b = Div (tag, a, b)
+let cos_tag tag a = Cos (tag, a)
+let sin_tag tag a = Sin (tag, a)
+let e_tag tag a = E (tag, a)
+let ln_tag tag a = Ln (tag, a)
+let sqrt_tag tag v = Sqrt (tag, v)
+let erf_tag tag v = Erf (tag, v)
+let var_tag tag id = Var (tag, id)
+let const_tag tag v = Const (tag, v)
+let zero_tag tag = const_tag tag 0.0
+let one_tag tag = const_tag tag 1.0
+let not_tag tag v = Not (tag, v)
+let add = add_tag ()
+let mul = mul_tag ()
+let sub = sub_tag ()
+let div = div_tag ()
+let cos = cos_tag ()
+let sin = sin_tag ()
+let e = e_tag ()
+let ln = ln_tag ()
+let sqrt = sqrt_tag ()
+let erf = erf_tag ()
+let var = var_tag ()
+let const = const_tag ()
+let zero = const 0.
+let one = const 1.
 let neg a = sub zero a
 
 let power time n =
@@ -193,6 +212,7 @@ let eval_unary =
     | Ln _ -> Float.log
     | E _ -> Float.exp
     | Sqrt _ -> Float.sqrt
+    | Erf _ -> Float.erf
     | _ -> failwith unary_warning
   in
   { uop }
@@ -230,6 +250,7 @@ let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
   | Ln _ -> "ln"
   | E _ -> "e"
   | Sqrt _ -> "sqrt"
+  | Erf _ -> "erf"
   | Const (_, a) -> show a
   | Var (_, id) -> string_of_int id
   | Max _ -> "max"
@@ -252,6 +273,7 @@ let get_tag : type a. (_, a) tag_expr -> _ = function
   | Ln (tag, _) -> tag
   | E (tag, _) -> tag
   | Sqrt (tag, _) -> tag
+  | Erf (tag, _) -> tag
   | Var (tag, _) -> tag
   | Max (tag, _, _) -> tag
   | Min (tag, _, _) -> tag
@@ -261,21 +283,6 @@ let get_tag : type a. (_, a) tag_expr -> _ = function
   | Equal (tag, _, _) -> tag
   | Less (tag, _, _) -> tag
   | Cond (tag, _, _, _) -> tag
-
-let add_tag tag a b = Add (tag, a, b)
-let mul_tag tag a b = Mul (tag, a, b)
-let sub_tag tag a b = Sub (tag, a, b)
-let div_tag tag a b = Div (tag, a, b)
-let cos_tag tag a = Cos (tag, a)
-let sin_tag tag a = Sin (tag, a)
-let e_tag tag a = E (tag, a)
-let ln_tag tag a = Ln (tag, a)
-let sqrt_tag tag v = Sqrt (tag, v)
-let var_tag tag id = Var (tag, id)
-let const_tag tag v = Const (tag, v)
-let zero_tag tag = const_tag tag 0.0
-let one_tag tag = const_tag tag 1.0
-let not_tag tag v = Not (tag, v)
 
 let add_any_tag tag (Any left) (Any right) =
   Any (add_tag tag (cast_to_float left) (cast_to_float right))
@@ -294,6 +301,7 @@ let sin_any_tag tag (Any v) = Any (sin_tag tag (cast_to_float v))
 let ln_any_tag tag (Any v) = Any (ln_tag tag (cast_to_float v))
 let e_any_tag tag (Any v) = Any (e_tag tag (cast_to_float v))
 let sqrt_any_tag tag (Any v) = Any (sqrt_tag tag (cast_to_float v))
+let erf_any_tag tag (Any v) = Any (erf_tag tag (cast_to_float v))
 let zero_any_tag tag = Any (zero_tag tag)
 let one_any_tag tag = Any (one_tag tag)
 let var_any_tag tag id = Any (var_tag tag id)

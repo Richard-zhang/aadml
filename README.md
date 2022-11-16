@@ -93,6 +93,10 @@
   * type bool - support logical operation
   * type float - support floating point operation
 - [x] remove one/zero
-- [ ] add errf as an operator
+- [ ] add erf as an operator
+- [ ] complete support for max/min
+- [ ] add if-then-else
+- [ ] generalise visual to debug intermidate states of computational graphs
+- [ ] monte carlo pricing
 * think about how recursion-scheme can come into plays
 * Add more constraints on GADTs

@@ -3,6 +3,7 @@
 open Expr
 open Util
 
+let erf_coef = 2. /. Float.sqrt Float.pi
 let diff_ternary : (_, 'a) ternary = dummy_ternary ()
 
 let diff_nullary id =
@@ -23,6 +24,10 @@ let diff_unary =
       | E (_, a) -> e a
       | Ln (_, a) -> div one a
       | Sqrt (_, a) -> div one (mul (add one one) (sqrt a))
+      | Erf (_, a) ->
+          let e_z_square = e (neg (mul a a)) in
+          let coef = const erf_coef in
+          mul coef e_z_square
       | _ -> failwith unary_warning
     in
     mul_any_tag () (Any (exp |> cast_to_float |> diff_unary_help)) dudx
@@ -86,6 +91,10 @@ let combine_eval_diff_unary : (_, float * float) unary =
     | E _ -> helper Float.exp Float.exp
     | Ln _ -> helper Float.log (( /. ) 1.0)
     | Sqrt _ -> helper Float.sqrt (Base.Fn.compose (( /. ) 0.5) Float.sqrt)
+    | Erf _ ->
+        helper Float.erf (fun x ->
+            let value = Float.exp (Float.neg (x *. x)) in
+            value *. erf_coef)
     | _ -> failwith unary_warning
   in
   { uop }
@@ -155,6 +164,7 @@ let eval_tag_unary =
     | Ln _ -> Any (ln_tag (Float.log tag) (cast_to_float value))
     | E _ -> Any (e_tag (Float.exp tag) (cast_to_float value))
     | Sqrt _ -> Any (sqrt_tag (Float.sqrt tag) (cast_to_float value))
+    | Erf _ -> Any (erf_tag (Float.erf tag) (cast_to_float value))
     | _ -> failwith unary_warning
   in
   { uop }
@@ -217,22 +227,30 @@ let backprop_binary =
   { bop }
 
 (**
-  v = sin x => df/dx = df/dv * dv/dx = cos x * df/dv
-  v - cos x => df/dx = df/dv * dv/dx = -sin x * df/dv
-  v = ln x => df/dx = df/dv * dv/dx = 1/x * df/dv
-  v = e ^ x => df/dx = df/dv * dv/dx = e ^ x * df/dv
-  v = sqrt (x) => df/dx = df/dv * dv/dx = df/dv * -0.5 / v
+  v = sin u => df/du = df/dv * dv/du = cos u * df/dv
+  v - cos u => df/du = df/dv * dv/du = -sin u * df/dv
+  v = ln u => df/du = df/dv * dv/du = 1/u * df/dv
+  v = e ^ u => df/du = df/dv * dv/du = e ^ u * df/dv
+  v = sqrt (u) => df/du = df/dv * dv/du = 0.5 * (1. /. sqrt u) * df/dv
+  v = erf(u) => df/du = df/dv * dv/du = df/dv * coef * e^(-u^2)
 *)
 let backprop_unary =
   let uop : type a. (_, a) tag_expr -> b_rs -> b_rs =
-   fun v fd v_derv ->
+   fun v fd dfdv ->
+    let mk_dfdu u dvdu = fd (dfdv *. dvdu (get_tag u)) in
     match v with
-    | Sin (_, x) -> sin_any_tag v_derv (fd (Float.cos (get_tag x) *. v_derv))
-    | Cos (_, x) ->
-        cos_any_tag v_derv (fd (Float.neg (Float.sin (get_tag x) *. v_derv)))
-    | Ln (_, x) -> ln_any_tag v_derv (fd (v_derv /. get_tag x))
-    | E (t, _) -> e_any_tag v_derv (fd (v_derv *. t))
-    | Sqrt (t, _) -> sqrt_any_tag v_derv (fd (v_derv *. 0.5 /. t))
+    | Sin (_, u) -> sin_any_tag dfdv (mk_dfdu u Float.cos)
+    | Cos (_, u) ->
+        cos_any_tag dfdv (mk_dfdu u (fun u -> u |> Float.sin |> Float.neg))
+    | Ln (_, u) -> ln_any_tag dfdv (mk_dfdu u (Float.div 1.))
+    | E (_, u) -> e_any_tag dfdv (mk_dfdu u Float.exp)
+    | Sqrt (_, u) ->
+        sqrt_any_tag dfdv (mk_dfdu u (fun u -> 0.5 /. Float.sqrt u))
+    | Erf (_, u) ->
+        erf_any_tag dfdv
+          (mk_dfdu u (fun u ->
+               let value = Float.exp (Float.neg (u *. u)) in
+               value *. erf_coef))
     | _ -> failwith unary_warning
   in
   { uop }

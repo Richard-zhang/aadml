@@ -25,6 +25,7 @@ type ('tag, _) tag_expr =
   | Ln : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | E : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | Sqrt : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
+  | Erf : 'tag * ('tag, float) tag_expr -> ('tag, float) tag_expr
   | Var : 'tag * int -> ('tag, float) tag_expr
   | Max :
       'tag * ('tag, float) tag_expr * ('tag, float) tag_expr
@@ -86,6 +87,7 @@ val sub : float expr -> float expr -> float expr
 val div : float expr -> float expr -> float expr
 val cos : float expr -> float expr
 val sin : float expr -> float expr
+val erf : float expr -> float expr
 val e : float expr -> float expr
 val ln : float expr -> float expr
 val sqrt : float expr -> float expr
@@ -125,6 +127,7 @@ val sin_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
 val e_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
 val ln_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
 val sqrt_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
+val erf_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
 val zero_tag : 'tag -> ('tag, float) tag_expr
 val one_tag : 'tag -> ('tag, float) tag_expr
 val var_tag : 'tag -> int -> ('tag, float) tag_expr
@@ -143,6 +146,7 @@ val sin_any_tag : 'tag -> 'tag any -> 'tag any
 val e_any_tag : 'tag -> 'tag any -> 'tag any
 val ln_any_tag : 'tag -> 'tag any -> 'tag any
 val sqrt_any_tag : 'tag -> 'tag any -> 'tag any
+val erf_any_tag : 'tag -> 'tag any -> 'tag any
 val zero_any_tag : 'tag -> 'tag any
 val one_any_tag : 'tag -> 'tag any
 val var_any_tag : 'tag -> int -> 'tag any

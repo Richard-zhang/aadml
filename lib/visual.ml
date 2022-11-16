@@ -44,6 +44,7 @@ let label_unary =
       | Ln _ -> ln_any_tag (get_node float_show exp label) value
       | E _ -> e_any_tag (get_node float_show exp label) value
       | Sqrt _ -> sqrt_any_tag (get_node float_show exp label) value
+      | Erf _ -> erf_any_tag (get_node float_show exp label) value
       | _ -> failwith unary_warning
     in
     (final_label, result)
@@ -111,6 +112,7 @@ let dot_unary =
     | Ln (_, sub_exp) -> gen_stmts sub_exp @ a
     | E (_, sub_exp) -> gen_stmts sub_exp @ a
     | Sqrt (_, sub_exp) -> gen_stmts sub_exp @ a
+    | Erf (_, sub_exp) -> gen_stmts sub_exp @ a
     | _ -> failwith unary_warning
   in
   { uop }

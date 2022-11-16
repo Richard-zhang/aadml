@@ -1,3 +1,5 @@
+[@@@warning "-32-34-37"]
+
 open Expr
 
 let pdf x =
@@ -8,7 +10,7 @@ let pdf x =
 (**
   1. using the normal approximation
 *)
-let cdf x =
+let cdf_using_approximation x =
   let b_0 = const 0.2316419 in
   let b_1 = const 0.319381530 in
   let b_2 = const (Float.neg 0.356563782) in
@@ -29,14 +31,17 @@ let cdf x =
 
 let pure_cdf x = 0.5 *. (1.0 +. Float.erf (x /. Float.sqrt 2.0))
 
+let cdf x =
+  let rev_root_2 = const (1. /. Float.sqrt 2.) in
+  let erf_input = mul x rev_root_2 in
+  mul (const 0.5) (add one (erf erf_input))
+
 (* this is the correct handling of negative *)
-let rec eval_cdf x =
-  if x <= 0. then 1. -. eval_cdf (Float.neg x)
-  else
-    let id = 0 in
-    let env = empty |> update id x in
-    let cdf_formula = cdf (var id) in
-    Expr.eval env cdf_formula
+let eval_cdf x =
+  let id = 0 in
+  let env = empty |> update id x in
+  let cdf_formula = cdf (var id) in
+  Expr.eval env cdf_formula
 
 let%test_unit "cdf(0.4)" = Util.fuzzy_compare (pure_cdf 0.4) 0.65542
 
@@ -44,7 +49,7 @@ let%test_unit "F(z <= 0.4) == 0.65542" =
   Util.fuzzy_compare (eval_cdf 0.4) 0.65542
 
 let%test_unit "cdf(-1.)" = Util.fuzzy_compare (pure_cdf (-1.)) 0.15865525
-let%test_unit "F(z <= -1.)" = Util.fuzzy_compare (1. -. eval_cdf 1.) 0.15865525
+let%test_unit "F(z <= -1.)" = Util.fuzzy_compare (eval_cdf (-1.)) 0.15865525
 
 let%test_unit "test_case" =
   let _ =

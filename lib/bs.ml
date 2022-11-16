@@ -67,24 +67,48 @@ let%test_unit "bs greek 1" =
     eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
   in
   let all_diff = Diff.backward_all_diff env formula in
-  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 1) 0.932;
-  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 3) 9.579;
-  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 0) 39.413;
-  Util.fuzzy_compare ~accuracy:0.01 (all_diff |> Expr.lookup 4) 220.765;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 1) 0.932;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 3) 9.579;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 0) 39.413;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 4) 220.765;
   ()
 
 let%test_unit "bs greek 2" =
   let env, formula =
     eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
   in
-  Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 1 formula) 0.932;
-  Util.fuzzy_compare ~accuracy:0.01 (Diff.forward_diff env 3 formula) 9.579;
+  Util.fuzzy_compare ~accuracy:0.001 (Diff.forward_diff env 1 formula) 0.932;
+  Util.fuzzy_compare ~accuracy:0.001 (Diff.forward_diff env 3 formula) 9.579;
+  Util.fuzzy_compare ~accuracy:0.001 (Diff.forward_diff env 0 formula) 39.413;
   ()
 
 let%test_unit "bs greek 3" =
   let env, formula =
     eval_bs_fomula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
   in
-  Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 1 formula) 0.932;
-  Util.fuzzy_compare ~accuracy:0.01 (Diff.symbolic_diff env 3 formula) 9.579;
+  Util.fuzzy_compare ~accuracy:0.001 (Diff.symbolic_diff env 1 formula) 0.932;
+  Util.fuzzy_compare ~accuracy:0.001 (Diff.symbolic_diff env 3 formula) 9.579;
+  Util.fuzzy_compare ~accuracy:0.001 (Diff.symbolic_diff env 0 formula) 39.413;
+  ()
+
+let%test_unit "bs greek 4" =
+  let env, formula =
+    eval_bs_fomula ~vol:0.60 ~stock:100.0 ~strike:500.0 ~t:3.0 ~rate:0.04
+  in
+  let all_diff = Diff.backward_all_diff env formula in
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 1) 0.180;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 3) 5.003;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 0) 45.523;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 4) 33.818;
+  ()
+
+let%test_unit "bs greek 5" =
+  let env, formula =
+    eval_bs_fomula ~vol:0.50 ~stock:500.0 ~strike:100.0 ~t:10.0 ~rate:0.02
+  in
+  let all_diff = Diff.backward_all_diff env formula in
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 1) 0.974;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 3) 3.471;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 0) 97.021;
+  Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 4) 522.565;
   ()
