@@ -10,8 +10,8 @@ let draw_owl () =
 let draw_bs () =
   let open Expr in
   let name_env =
-    empty |> update 0 "vol" |> update 1 "S" |> update 2 "K" |> update 3 "T"
-    |> update 4 "r"
+    empty |> update 0 "vol" |> update 1 "spot" |> update 2 "strike" |> update 3 "time"
+    |> update 4 "rate"
   in
   let formula = Bs.bs ~vol:0 ~stock:1 ~strike:2 ~t:3 ~rate:4 in
   Visual.graph ~name_env formula |> print_endline
