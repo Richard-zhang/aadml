@@ -51,6 +51,8 @@ let diff_binary =
         let u'v = mul_any_tag () a_dot cast_b in
         let uv' = mul_any_tag () cast_a b_dot in
         div_any_tag () (sub_any_tag () u'v uv') (mul_any_tag () cast_b cast_b)
+    | Max _ -> failwith "not support in symbolic"
+    | Min _ -> failwith "not support in symbolic"
     | _ -> failwith binary_warning
   in
   { bop }
@@ -99,9 +101,13 @@ let combine_eval_diff_unary : (_, float * float) unary =
   in
   { uop }
 
-(* v = left `op` right => dv/dx = *)
+(**
+  v = left `op` right => dv/dx = 
+  max will choose greater value and identity   
+  min will choose smaller value and identity
+**)
 let combine_eval_diff_binary =
-  let bop : type a. (_, a) tag_expr -> _ -> _ -> _ =
+  let bop : type a. (_, a) tag_expr -> forward_t -> forward_t -> forward_t =
    fun op ->
     let helper eval diff (left_val, left_diff) (right_val, right_diff) =
       ( eval left_val right_val,
@@ -116,6 +122,8 @@ let combine_eval_diff_binary =
             let u'v = x' *. y in
             let uv' = x *. y' in
             (u'v -. uv') /. (y *. y))
+    | Max _ -> fun (l, l') (r, r') -> if l > r then (l, l') else (r, r')
+    | Min _ -> fun (l, l') (r, r') -> if l < r then (l, l') else (r, r')
     | _ -> failwith binary_warning
   in
   { bop }
@@ -148,6 +156,8 @@ let eval_tag_bianry =
     | Sub _ -> sub_any_tag (left_tag -. right_tag) left right
     | Div _ -> div_any_tag (left_tag /. right_tag) left right
     | Mul _ -> mul_any_tag (left_tag *. right_tag) left right
+    | Max _ -> max_any_tag (Float.max left_tag right_tag) left right
+    | Min _ -> min_any_tag (Float.min left_tag right_tag) left right
     | _ -> failwith binary_warning
   in
   { bop }
@@ -210,6 +220,7 @@ let debug_backward_feedforwrad env x =
 
 type b_rs = float -> float any
 
+(* max/min are identity selector *)
 let backprop_binary =
   let bop : type a. (_, a) tag_expr -> b_rs -> b_rs -> b_rs =
    fun v fdl fdr v_derv ->
@@ -226,6 +237,8 @@ let backprop_binary =
         let dvdl = 1.0 /. r_v in
         let dvdr = Float.neg (l_v /. (r_v *. r_v)) in
         div_any_tag v_derv (fdl (v_derv *. dvdl)) (fdr (v_derv *. dvdr))
+    | Max (_, l, r) -> if get_tag l > get_tag r then fdl v_derv else fdr v_derv
+    | Min (_, l, r) -> if get_tag l < get_tag r then fdl v_derv else fdr v_derv
     | _ -> failwith binary_warning
   in
   { bop }

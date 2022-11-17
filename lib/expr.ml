@@ -167,6 +167,8 @@ let add_tag tag a b = Add (tag, a, b)
 let mul_tag tag a b = Mul (tag, a, b)
 let sub_tag tag a b = Sub (tag, a, b)
 let div_tag tag a b = Div (tag, a, b)
+let max_tag tag a b = Max (tag, a, b)
+let min_tag tag a b = Min (tag, a, b)
 let cos_tag tag a = Cos (tag, a)
 let sin_tag tag a = Sin (tag, a)
 let e_tag tag a = E (tag, a)
@@ -182,6 +184,8 @@ let add = add_tag ()
 let mul = mul_tag ()
 let sub = sub_tag ()
 let div = div_tag ()
+let max = max_tag ()
+let min = min_tag ()
 let cos = cos_tag ()
 let sin = sin_tag ()
 let e = e_tag ()
@@ -295,6 +299,12 @@ let sub_any_tag tag (Any left) (Any right) =
 
 let div_any_tag tag (Any left) (Any right) =
   Any (div_tag tag (cast_to_float left) (cast_to_float right))
+
+let max_any_tag tag (Any left) (Any right) =
+  Any (max_tag tag (cast_to_float left) (cast_to_float right))
+
+let min_any_tag tag (Any left) (Any right) =
+  Any (min_tag tag (cast_to_float left) (cast_to_float right))
 
 let cos_any_tag tag (Any v) = Any (cos_tag tag (cast_to_float v))
 let sin_any_tag tag (Any v) = Any (sin_tag tag (cast_to_float v))

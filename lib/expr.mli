@@ -85,6 +85,8 @@ val add : float expr -> float expr -> float expr
 val mul : float expr -> float expr -> float expr
 val sub : float expr -> float expr -> float expr
 val div : float expr -> float expr -> float expr
+val max : float expr -> float expr -> float expr
+val min : float expr -> float expr -> float expr
 val cos : float expr -> float expr
 val sin : float expr -> float expr
 val erf : float expr -> float expr
@@ -122,6 +124,18 @@ val div_tag :
   ('tag, float) tag_expr ->
   ('tag, float) tag_expr
 
+val max_tag :
+  'tag ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr
+
+val min_tag :
+  'tag ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr ->
+  ('tag, float) tag_expr
+
 val cos_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
 val sin_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
 val e_tag : 'tag -> ('tag, float) tag_expr -> ('tag, float) tag_expr
@@ -141,6 +155,8 @@ val add_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
 val mul_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
 val sub_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
 val div_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
+val max_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
+val min_any_tag : 'tag -> 'tag any -> 'tag any -> 'tag any
 val cos_any_tag : 'tag -> 'tag any -> 'tag any
 val sin_any_tag : 'tag -> 'tag any -> 'tag any
 val e_any_tag : 'tag -> 'tag any -> 'tag any
@@ -152,4 +168,6 @@ val one_any_tag : 'tag -> 'tag any
 val var_any_tag : 'tag -> int -> 'tag any
 val const_any_tag : 'tag -> float -> 'tag any
 val not_any_tag : 'tag -> 'tag any -> 'tag any
+
 val string_of_op : show:('a -> string) -> ('tag, 'a) tag_expr -> string
+(** pretty printing operator **)

@@ -27,6 +27,8 @@ let label_binary =
       | Sub _ -> sub_any_tag (get_node float_show exp label) left right
       | Div _ -> div_any_tag (get_node float_show exp label) left right
       | Mul _ -> mul_any_tag (get_node float_show exp label) left right
+      | Max _ -> max_any_tag (get_node float_show exp label) left right
+      | Min _ -> min_any_tag (get_node float_show exp label) left right
       | _ -> failwith binary_warning
     in
     (right_label, result)
@@ -95,6 +97,8 @@ let dot_binary =
     | Sub (_, left, right) -> gen_stmts left right @ a @ b
     | Div (_, left, right) -> gen_stmts left right @ a @ b
     | Mul (_, left, right) -> gen_stmts left right @ a @ b
+    | Max (_, left, right) -> gen_stmts left right @ a @ b
+    | Min (_, left, right) -> gen_stmts left right @ a @ b
     | _ -> failwith binary_warning
   in
   { bop }

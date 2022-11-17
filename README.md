@@ -50,6 +50,13 @@
 # Limitation
 * lack of automation
 
+## Important resources
+
+* [Type witness](https://discuss.ocaml.org/t/types-as-first-class-citizens-in-ocaml/2030/2)
+* [Capturing Existential Type](https://gist.github.com/jonsterling/a1c7932bc99651145d3a)
+* [how to return a GADT](https://discuss.ocaml.org/t/type-of-function-returning-gadt/5812)
+* [how to use singleton type](https://stackoverflow.com/questions/68110623/equality-for-gadts-which-erase-type-parameter)
+
 # Learn
 
 ## OCaml Type System
@@ -94,8 +101,13 @@
   * type float - support floating point operation
 - [x] remove one/zero
 - [x] add erf as an operator
-- [ ] generalise visual to debug intermidate states of computational graphs
-- [ ] complete support for max/min
+- [x] generalise visual to debug intermidate states of computational graphs
+- [x] complete support for max/min
+  * max/min operator 
+  * max simply selects the greatest value and ignores the others
+  so max is the identity operation for that one element. Therefore, the gradient can
+  flow backwards through it for just one element.
 - [ ] add if-then-else
 - [ ] monte carlo pricing
+- [ ] second order differentiation
 - [ ] think about how recursion-scheme can come into plays
