@@ -152,4 +152,4 @@ val one_any_tag : 'tag -> 'tag any
 val var_any_tag : 'tag -> int -> 'tag any
 val const_any_tag : 'tag -> float -> 'tag any
 val not_any_tag : 'tag -> 'tag any -> 'tag any
-val string_of_op : show:('a -> string) -> 'a expr -> string
+val string_of_op : show:('a -> string) -> ('tag, 'a) tag_expr -> string

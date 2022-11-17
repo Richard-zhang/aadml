@@ -239,7 +239,7 @@ let eval_ternary =
 let eval env x =
   fold_cps eval_ternary eval_binary eval_unary (eval_nullary env) x Base.Fn.id
 
-let string_of_op (type a) ~(show : a -> string) (exp : a expr) =
+let string_of_op (type a) ~(show : a -> string) (exp : ('tag, a) tag_expr) =
   match exp with
   | Add _ -> "+"
   | Mul _ -> "*"

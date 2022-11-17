@@ -1,23 +1,23 @@
 open Expr
 open Util
 
-type node = Op of int * string | Input of int
+type 'tag node = Op of int * string * 'tag | Input of int * 'tag
 
-let id_of_node = function Op (id, _) -> id | Input id -> id
+let id_of_node = function Op (id, _, _) -> id | Input (id, _) -> id
 
 (* show type class in OCaml *)
-let get_node (type a) (show : a -> string) (exp : a expr) label =
+let get_node (type tag a) (show : a -> string) (exp : (tag, a) tag_expr) label =
   match exp with
-  | Var (_, id) -> Input (-1 * id)
-  | _ -> Op (label, string_of_op ~show exp)
+  | Var (_, id) -> Input (-1 * id, get_tag exp)
+  | _ -> Op (label, string_of_op ~show exp, get_tag exp)
 
 let float_show = Printf.sprintf "%0.2f"
 
-type label_rs = int -> int * node any
+type 'tag label_rs = int -> int * 'tag node any
 
 (* pre order traversal using label *)
 let label_binary =
-  let bop : type a. (_, a) tag_expr -> label_rs -> label_rs -> label_rs =
+  let bop : type a. (_, a) tag_expr -> _ label_rs -> _ label_rs -> _ label_rs =
    fun exp fl fr label ->
     let left_label, left = fl (label + 1) in
     let right_label, right = fr (left_label + 1) in
@@ -34,7 +34,7 @@ let label_binary =
   { bop }
 
 let label_unary =
-  let uop : type a. (_, a) tag_expr -> label_rs -> label_rs =
+  let uop : type a. (_, a) tag_expr -> _ label_rs -> _ label_rs =
    fun exp f label ->
     let final_label, value = f (label + 1) in
     let result =
@@ -52,7 +52,7 @@ let label_unary =
   { uop }
 
 let label_nullary =
-  let nop : type a. (_, a) tag_expr -> label_rs =
+  let nop : type a. (_, a) tag_expr -> _ label_rs =
    fun exp label ->
     match exp with
     | Const (_, a) -> (label, const_any_tag (get_node float_show exp label) a)
@@ -61,25 +61,27 @@ let label_nullary =
   in
   { nop }
 
-let label x =
-  fold_cps (dummy_ternary ()) label_binary label_unary label_nullary x (fun f ->
-      f 1 |> snd)
+let label : type tag. (tag, _) tag_expr -> tag node any =
+ fun x ->
+  let assign : type a. a label_rs -> a node any = fun f -> f 1 |> snd in
+  fold_cps (dummy_ternary ()) label_binary label_unary label_nullary x assign
 
-type stmt = Edge of int * int | Node of int * string
-
-let string_of_stmt = function
-  | Edge (s, e) -> Printf.sprintf "%d -> %d" s e
-  | Node (node, label) -> Printf.sprintf "%d[label=\"%s\"];" node label
+type 'tag stmt = Edge of int * int | Node of int * string * 'tag
 
 let stmt_of_node ?(name_env = empty) = function
-  | Input id -> (
+  | Input (id, tag) -> (
       match IntMap.find_opt (-id) name_env with
-      | Some name -> Node (id, name)
-      | None -> Node (id, Printf.sprintf "x%d" (-1 * id)))
-  | Op (id, label) -> Node (id, label)
+      | Some name -> Node (id, name, tag)
+      | None -> Node (id, Printf.sprintf "x%d" (-1 * id), tag))
+  | Op (id, label, tag) -> Node (id, label, tag)
 
 let dot_binary =
-  let bop : type a. (node, a) tag_expr -> stmt list -> stmt list -> stmt list =
+  let bop :
+      type a.
+      ('tag node, a) tag_expr ->
+      'tag stmt list ->
+      'tag stmt list ->
+      'tag stmt list =
    fun exp a b ->
     let n = get_tag exp in
     let node_id = id_of_node n in
@@ -98,7 +100,8 @@ let dot_binary =
   { bop }
 
 let dot_unary =
-  let uop : type a. (node, a) tag_expr -> stmt list -> stmt list =
+  let uop : type a. ('tag node, a) tag_expr -> 'tag stmt list -> 'tag stmt list
+      =
    fun exp a ->
     let n = get_tag exp in
     let node_id = id_of_node n in
@@ -118,7 +121,7 @@ let dot_unary =
   { uop }
 
 let dot_nullary (name_env : string env) =
-  let nop : type a. (node, a) tag_expr -> stmt list =
+  let nop : type a. ('tag node, a) tag_expr -> 'tag stmt list =
    fun exp ->
     match exp with
     | Const (tag, _) -> [ stmt_of_node tag ]
@@ -131,16 +134,35 @@ let stmts_of_label_expr ?(name_env = empty) exp =
   fold_cps (dummy_ternary ()) dot_binary dot_unary (dot_nullary name_env) exp
     Base.Fn.id
 
-let graph_of_stmts stmts =
-  let stmts = List.map string_of_stmt stmts in
+let string_of_stmt show = function
+  | Edge (s, e) -> Printf.sprintf "%d -> %d" s e
+  | Node (node, label, tag) ->
+      Printf.sprintf "%d[label=<%s<BR/>%s>];" node label (show tag)
+
+let graph_of_stmts show stmts =
+  let stmts = List.map (string_of_stmt show) stmts in
   let graph = Base.String.concat ~sep:"\n" stmts in
   Printf.sprintf "digraph G {\n%s\n}\n" graph
 
-let graph ?name_env exp =
+let tag_graph (type a) ~(show : a -> string) ?name_env
+    (exp : (a, float) tag_expr) =
   let labelled_exp = label exp in
   spread labelled_exp
     {
       run =
         (fun tag_expr ->
-          tag_expr |> stmts_of_label_expr ?name_env |> graph_of_stmts);
+          tag_expr |> stmts_of_label_expr ?name_env |> graph_of_stmts show);
     }
+
+let graph ?name_env exp = tag_graph ~show:(fun _ -> "") ?name_env exp
+
+let float_tag_show =
+  Printf.sprintf {|<FONT POINT-SIZE="6" FACE="Fira Code">%.3f</FONT>|}
+
+let float_graph ?name_env exp = tag_graph ~show:float_tag_show ?name_env exp
+
+let float_float_tag_show (a, b) =
+  Printf.sprintf {|<FONT POINT-SIZE="6" FACE="Fira Code">%.3f, %.3f</FONT>|} a b
+
+let float_float_graph ?name_env exp =
+  tag_graph ~show:float_float_tag_show ?name_env exp

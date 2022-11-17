@@ -185,6 +185,10 @@ let eval_tag env x =
   fold_cps eval_tag_ternary eval_tag_bianry eval_tag_unary
     (eval_tag_nullary env) x Base.Fn.id
 
+let debug_backward_feedforwrad env x =
+  let any_tag = eval_tag env x in
+  spread any_tag { run = cast_to_float }
+
 (* fold over the tree that returns a function *)
 
 (* back propagation is the top down traversal *)
@@ -294,6 +298,11 @@ let collect_result x =
   in
   fold_cps collect_result_ternary collect_result_binary collect_result_unary
     collect_result_nullary x Base.Fn.id
+
+let debug_backward_backprop env formula =
+  let intermediate_result = eval_tag env formula in
+  let backprop_result = spread intermediate_result { run = backprop } in
+  spread backprop_result { run = cast_to_float }
 
 let backward_all_diff env formula =
   let intermediate_result = eval_tag env formula in
