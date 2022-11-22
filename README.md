@@ -107,7 +107,10 @@
   * max simply selects the greatest value and ignores the others
   so max is the identity operation for that one element. Therefore, the gradient can
   flow backwards through it for just one element.
-- [ ] add if-then-else
+- [ ] support pow operator
 - [ ] monte carlo pricing
 - [ ] second order differentiation
 - [ ] think about how recursion-scheme can come into plays
+- [ ] deal with bool operation
+- [ ] add if-then-else
+  * [looping and branching with Algorithmic Differentiation](https://cs.stackexchange.com/questions/70615/looping-and-branching-with-algorithmic-differentiation)
