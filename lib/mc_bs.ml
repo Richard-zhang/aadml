@@ -1,3 +1,5 @@
+[@@@warning "-32-34-37"]
+
 open Expr
 
 let pay_off_func strike stock_price =
@@ -12,15 +14,26 @@ let gen_coin_flip seed =
   let f () = if Random.bool () then one else neg one in
   f
 
+let gen_normal_rv seed =
+  Random.init seed;
+  let f () = if Random.bool () then one else neg one in
+  f
+
 (* discrete_model of black schole *)
 type rand_gen_t = unit -> float expr
 type model_dynamic_t = rand_gen_t -> float expr -> float expr -> float expr
 
+let bs_model_dynamic_2 ~rate ~vol : model_dynamic_t =
+ fun rand_gen delta_t value_at_t ->
+  let first = sub rate (mul (const 0.5) (mul vol vol)) in
+  let second = mul vol (mul (sqrt delta_t) (rand_gen ())) in
+  mul value_at_t (add first second)
+
 let bs_model_dynamic ~rate ~vol : model_dynamic_t =
- fun rand_gen time_step value_at_t ->
-  let risk_free_return = mul rate (mul value_at_t time_step) in
+ fun rand_gen delta_t value_at_t ->
+  let risk_free_return = mul rate (mul value_at_t delta_t) in
   let price_disturbance =
-    let sqrt_t = sqrt time_step in
+    let sqrt_t = sqrt delta_t in
     mul vol (mul value_at_t (mul (rand_gen ()) sqrt_t))
   in
   add value_at_t (add risk_free_return price_disturbance)
@@ -33,11 +46,14 @@ let get_avg (values : float expr list) =
   let aggregated_values = List.fold_left add zero values in
   let num_cashflows = const (float_of_int (List.length values)) in
   div aggregated_values num_cashflows
-
+(*
 let get_discount_factor num_step rate time_step =
   let df = add one (mul rate time_step) in
   let comp_df = power num_step df in
   comp_df
+*)
+
+let get_continuous_discount_factor rate t = e (neg (mul rate t))
 
 (* discount factor = (1 + r/m) ^ mt *)
 (* possible error here: take discount factor in a continuous way *)
@@ -46,7 +62,7 @@ let single_underlying_mc ~(num_path : int) ~(num_step : int) ~(num_seed : int)
     ~(pay_off_func : float expr -> float expr) ~(init : float expr)
     ~(r : float expr) ~(time_in_year : float expr) =
   let coin_flip = gen_coin_flip num_seed in
-  let discount_factor = get_discount_factor num_step r time_in_year in
+  let discount_factor = get_continuous_discount_factor r time_in_year in
   let time_step = div time_in_year (const (float_of_int num_step)) in
   let model_dynamic = gen_model_dynamic coin_flip in
   let gen _ =
@@ -68,7 +84,7 @@ let mc_bs_impl num_seed num_path num_step ~vol ~stock ~strike ~t ~rate =
   single_underlying_mc ~num_path ~num_step ~num_seed ~gen_model_dynamic
     ~pay_off_func ~init:stock ~r:rate ~time_in_year:t
 
-let mc_bs = mc_bs_impl 4321 100000 1
+let mc_bs = mc_bs_impl 4321 52 10
 
 let formula ~vol ~stock ~strike ~t ~rate =
   let vol = var vol in

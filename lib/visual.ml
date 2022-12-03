@@ -146,7 +146,7 @@ let string_of_stmt show = function
 let graph_of_stmts show stmts =
   let stmts = List.map (string_of_stmt show) stmts in
   let graph = Base.String.concat ~sep:"\n" stmts in
-  Printf.sprintf "digraph G {\n%s\n}\n" graph
+  Printf.sprintf "digraph G {\nbgcolor=\"transparent\"\n%s\n}\n" graph
 
 let tag_graph (type a) ~(show : a -> string) ?name_env
     (exp : (a, float) tag_expr) =

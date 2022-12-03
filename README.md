@@ -114,3 +114,10 @@
 - [ ] deal with bool operation
 - [ ] add if-then-else
   * [looping and branching with Algorithmic Differentiation](https://cs.stackexchange.com/questions/70615/looping-and-branching-with-algorithmic-differentiation)
+
+## Produce Visualization
+
+```sh
+dune exec -- bin/main.exe > example/dot.txt && cat example/dot.txt | dot -Tpng > $dest_path
+dune exec -- bin/main.exe | dot -Tpng > $dest_path
+```
