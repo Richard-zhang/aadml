@@ -31,6 +31,7 @@ let%test_unit "bs call valuation 1" =
   let value = eval ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03 in
   Util.fuzzy_compare ~accuracy:0.001 value 58.82
 
+(*
 let%test_unit "bs call valuation 2" =
   let value = eval ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:5.0 ~rate:0.03 in
   Util.fuzzy_compare ~accuracy:0.01 value 91.98
@@ -42,7 +43,7 @@ let%test_unit "bs call valuation 3" =
 let%test_unit "bs call valuation 4" =
   let value = eval ~vol:0.40 ~stock:250.0 ~strike:300.0 ~t:5.0 ~rate:0.03 in
   Util.fuzzy_compare ~accuracy:0.01 value 83.69
-(*
+*)
 let%test_unit "bs greek 1" =
   let env, formula =
     eval_formula ~vol:0.15 ~stock:300.0 ~strike:250.0 ~t:1.0 ~rate:0.03
@@ -53,7 +54,7 @@ let%test_unit "bs greek 1" =
   Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 0) 39.413;
   Util.fuzzy_compare ~accuracy:0.001 (all_diff |> Expr.lookup 4) 220.765;
   ()
-
+(*
 let%test_unit "bs greek 4" =
   let env, formula =
     eval_formula ~vol:0.60 ~stock:100.0 ~strike:500.0 ~t:3.0 ~rate:0.04

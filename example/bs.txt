@@ -1,0 +1,141 @@
+digraph G {
+bgcolor="transparent"
+2 -> 1
+30 -> 1
+1[label=<-<BR/>>];
+-1 -> 2
+4 -> 2
+2[label=<*<BR/>>];
+-1[label=<spot<BR/>>];
+5 -> 4
+6 -> 4
+4[label=<*<BR/>>];
+5[label=<0.50<BR/>>];
+7 -> 6
+8 -> 6
+6[label=<+<BR/>>];
+7[label=<1.00<BR/>>];
+9 -> 8
+8[label=<erf<BR/>>];
+10 -> 9
+29 -> 9
+9[label=<*<BR/>>];
+11 -> 10
+25 -> 10
+10[label=</<BR/>>];
+12 -> 11
+16 -> 11
+11[label=<+<BR/>>];
+13 -> 12
+12[label=<ln<BR/>>];
+-1 -> 13
+-2 -> 13
+13[label=</<BR/>>];
+-1[label=<spot<BR/>>];
+-2[label=<strike<BR/>>];
+-3 -> 16
+18 -> 16
+16[label=<*<BR/>>];
+-3[label=<time<BR/>>];
+-4 -> 18
+20 -> 18
+18[label=<+<BR/>>];
+-4[label=<rate<BR/>>];
+21 -> 20
+24 -> 20
+20[label=</<BR/>>];
+0 -> 21
+0 -> 21
+21[label=<*<BR/>>];
+0[label=<vol<BR/>>];
+0[label=<vol<BR/>>];
+24[label=<2.00<BR/>>];
+0 -> 25
+27 -> 25
+25[label=<*<BR/>>];
+0[label=<vol<BR/>>];
+-3 -> 27
+27[label=<sqrt<BR/>>];
+-3[label=<time<BR/>>];
+29[label=<0.71<BR/>>];
+31 -> 30
+39 -> 30
+30[label=<*<BR/>>];
+-2 -> 31
+33 -> 31
+31[label=<*<BR/>>];
+-2[label=<strike<BR/>>];
+34 -> 33
+33[label=<e<BR/>>];
+35 -> 34
+36 -> 34
+34[label=<-<BR/>>];
+35[label=<0.00<BR/>>];
+-4 -> 36
+-3 -> 36
+36[label=<*<BR/>>];
+-4[label=<rate<BR/>>];
+-3[label=<time<BR/>>];
+40 -> 39
+41 -> 39
+39[label=<*<BR/>>];
+40[label=<0.50<BR/>>];
+42 -> 41
+43 -> 41
+41[label=<+<BR/>>];
+42[label=<1.00<BR/>>];
+44 -> 43
+43[label=<erf<BR/>>];
+45 -> 44
+69 -> 44
+44[label=<*<BR/>>];
+46 -> 45
+65 -> 45
+45[label=<-<BR/>>];
+47 -> 46
+61 -> 46
+46[label=</<BR/>>];
+48 -> 47
+52 -> 47
+47[label=<+<BR/>>];
+49 -> 48
+48[label=<ln<BR/>>];
+-1 -> 49
+-2 -> 49
+49[label=</<BR/>>];
+-1[label=<spot<BR/>>];
+-2[label=<strike<BR/>>];
+-3 -> 52
+54 -> 52
+52[label=<*<BR/>>];
+-3[label=<time<BR/>>];
+-4 -> 54
+56 -> 54
+54[label=<+<BR/>>];
+-4[label=<rate<BR/>>];
+57 -> 56
+60 -> 56
+56[label=</<BR/>>];
+0 -> 57
+0 -> 57
+57[label=<*<BR/>>];
+0[label=<vol<BR/>>];
+0[label=<vol<BR/>>];
+60[label=<2.00<BR/>>];
+0 -> 61
+63 -> 61
+61[label=<*<BR/>>];
+0[label=<vol<BR/>>];
+-3 -> 63
+63[label=<sqrt<BR/>>];
+-3[label=<time<BR/>>];
+0 -> 65
+67 -> 65
+65[label=<*<BR/>>];
+0[label=<vol<BR/>>];
+-3 -> 67
+67[label=<sqrt<BR/>>];
+-3[label=<time<BR/>>];
+69[label=<0.71<BR/>>];
+}
+

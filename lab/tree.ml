@@ -1,4 +1,10 @@
 type _ t = Leaf : 'a t | Branch : ('a * 'a t * 'a t) -> 'a t
+type 'a tree = N of 'a * 'a tree * 'a tree | L
+
+let rec fold_tree (f : 'a -> 'b -> 'b -> 'b) (init : 'b) = function
+  | L -> init
+  | N (v, left_t, right_t) -> f v (fold_tree f init left_t) (fold_tree f init right_t)
+
 
 let rec fold (f : 'a -> 'b -> 'b -> 'b) (init : 'b) = function
   | Leaf -> init

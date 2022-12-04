@@ -1,0 +1,25 @@
+digraph G {
+bgcolor="transparent"
+2 -> 1
+3 -> 1
+1[label=</<BR/>>];
+2[label=<1.00<BR/>>];
+4 -> 3
+5 -> 3
+3[label=<+<BR/>>];
+4[label=<1.00<BR/>>];
+6 -> 5
+5[label=<e<BR/>>];
+7 -> 6
+10 -> 6
+6[label=<+<BR/>>];
+0 -> 7
+-1 -> 7
+7[label=<*<BR/>>];
+0[label=<x0<BR/>>];
+-1[label=<x1<BR/>>];
+0 -> 10
+10[label=<sin<BR/>>];
+0[label=<x0<BR/>>];
+}
+
