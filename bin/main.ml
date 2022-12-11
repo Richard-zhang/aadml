@@ -37,7 +37,7 @@ let draw_bs () =
     empty |> update 0 "vol" |> update 1 "spot" |> update 2 "strike"
     |> update 3 "time" |> update 4 "rate"
   in
-  let formula = Bs.formula ~vol:0 ~stock:1 ~strike:2 ~t:3 ~rate:4 in
+  let formula = Mc_bs.formula ~vol:0 ~stock:1 ~strike:2 ~t:3 ~rate:4 in
   Visual.graph ~name_env formula |> print_endline
 
-let () = draw_owl ()
+let () = draw_bs ()
